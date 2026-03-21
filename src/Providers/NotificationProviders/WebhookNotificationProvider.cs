@@ -11,21 +11,19 @@ namespace DhCodetaskExtension.Providers.NotificationProviders
 {
     public sealed class WebhookNotificationProvider : INotificationProvider
     {
-        private static readonly HttpClient _http = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(15)
-        };
+        private static readonly HttpClient _http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
         private readonly Func<AppSettings> _settingsProvider;
 
         public WebhookNotificationProvider(Func<AppSettings> settingsProvider)
         {
-            _settingsProvider = settingsProvider
-                ?? throw new ArgumentNullException(nameof(settingsProvider));
+            _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         }
 
         public void OnEvent<TEvent>(TEvent eventArgs) where TEvent : EventArgs
         {
-            if (eventArgs is TaskCompletedEvent completed)
+            // C# 7.0 compat: use 'as' cast instead of pattern matching 'is T x'
+            var completed = eventArgs as TaskCompletedEvent;
+            if (completed != null)
                 _ = PostWithRetryAsync(BuildPayload(completed));
         }
 
@@ -34,26 +32,16 @@ namespace DhCodetaskExtension.Providers.NotificationProviders
             var r = e.Report;
             return new
             {
-                @event = "task.completed",
-                timestamp = r.CompletedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                task = new { id = r.TaskId, title = r.TaskTitle, url = r.TaskUrl },
+                @event        = "task.completed",
+                timestamp     = r.CompletedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                task          = new { id = r.TaskId, title = r.TaskTitle, url = r.TaskUrl },
                 elapsed_seconds = (long)r.TotalElapsed.TotalSeconds,
                 elapsed_display = FormatSpan(r.TotalElapsed),
-                started_at = r.StartedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                completed_at = r.CompletedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                todos = new
-                {
-                    total = r.TodoTotal,
-                    done = r.TodoDone,
-                    elapsed_seconds = (long)r.TotalTodoElapsed.TotalSeconds
-                },
-                commit = new
-                {
-                    message = r.CommitMessage,
-                    hash = r.GitCommitHash,
-                    pushed = r.WasPushed
-                },
-                report_file = r.MarkdownFilePath
+                started_at    = r.StartedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                completed_at  = r.CompletedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                todos         = new { total = r.TodoTotal, done = r.TodoDone, elapsed_seconds = (long)r.TotalTodoElapsed.TotalSeconds },
+                commit        = new { message = r.CommitMessage, hash = r.GitCommitHash, pushed = r.WasPushed },
+                report_file   = r.MarkdownFilePath
             };
         }
 
@@ -61,10 +49,8 @@ namespace DhCodetaskExtension.Providers.NotificationProviders
         {
             var settings = _settingsProvider();
             if (!settings.WebhookEnabled || string.IsNullOrEmpty(settings.WebhookUrl)) return;
-
             var json = JsonConvert.SerializeObject(payload);
             int[] delays = { 1000, 2000, 4000 };
-
             for (int i = 0; i <= delays.Length; i++)
             {
                 try
@@ -76,14 +62,10 @@ namespace DhCodetaskExtension.Providers.NotificationProviders
                     }
                 }
                 catch { }
-
-                if (i < delays.Length)
-                    await Task.Delay(delays[i]);
+                if (i < delays.Length) await Task.Delay(delays[i]);
             }
-            // Fail silently — never block UI
         }
 
-        private static string FormatSpan(TimeSpan ts) =>
-            $"{(int)ts.TotalHours}h {ts.Minutes}m {ts.Seconds}s";
+        private static string FormatSpan(TimeSpan ts) => string.Format("{0}h {1}m {2}s", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
     }
 }

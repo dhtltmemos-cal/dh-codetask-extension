@@ -15,118 +15,115 @@ namespace DhCodetaskExtension.ViewModels
 {
     public sealed class TrackerViewModel : INotifyPropertyChanged
     {
-        // Services
-        private readonly IEventBus _eventBus;
-        private readonly IStorageService _storage;
-        private readonly IGitService _git;
-        private readonly IReportGenerator _reportGenerator;
-        private readonly TimeTrackingService _timer;
-        private readonly Func<AppSettings> _settings;
-        private readonly Action<string> _log;
+        private readonly IEventBus            _eventBus;
+        private readonly IStorageService      _storage;
+        private readonly IGitService          _git;
+        private readonly IReportGenerator     _reportGenerator;
+        private readonly TimeTrackingService  _timer;
+        private readonly Func<AppSettings>    _settings;
+        private readonly Action<string>       _log;
+        private DispatcherTimer               _autoSave;
+        private DispatcherTimer               _uiTimer;
 
-        // Auto-save
-        private DispatcherTimer _autoSave;
-        private DispatcherTimer _uiTimer;
-
-        // ── Observable state ─────────────────────────────────────────────
-        private string _taskUrl = string.Empty;
+        // ── Observable properties ─────────────────────────────────────────
+        private string _taskUrl       = string.Empty;
         private string _statusMessage = "Nhập URL issue để bắt đầu.";
-        private bool _isFetching;
-        private string _taskTitle = string.Empty;
+        private bool   _isFetching;
+        private string _taskTitle       = string.Empty;
         private string _taskDescription = string.Empty;
-        private string _labelsDisplay = string.Empty;
-        private string _workNotes = string.Empty;
-        private string _businessLogic = string.Empty;
-        private string _commitMessage = string.Empty;
-        private string _timerDisplay = "00:00:00";
-        private string _timerState = "Idle";
-        private bool _gitAvailable;
-        private string _repoRoot = string.Empty;
+        private string _labelsDisplay   = string.Empty;
+        private string _workNotes       = string.Empty;
+        private string _businessLogic   = string.Empty;
+        private string _commitMessage   = string.Empty;
+        private string _timerDisplay    = "00:00:00";
+        private string _timerState      = "Idle";
+        private bool   _gitAvailable;
+        private string _repoRoot        = string.Empty;
+        private string _newTodoText     = string.Empty;
         private TaskItem _currentTask;
 
-        public string TaskUrl { get => _taskUrl; set { _taskUrl = value; OnProp(nameof(TaskUrl)); } }
-        public string StatusMessage { get => _statusMessage; set { _statusMessage = value; OnProp(nameof(StatusMessage)); } }
-        public bool IsFetching { get => _isFetching; set { _isFetching = value; OnProp(nameof(IsFetching)); } }
-        public string TaskTitle { get => _taskTitle; set { _taskTitle = value; OnProp(nameof(TaskTitle)); } }
-        public string TaskDescription { get => _taskDescription; set { _taskDescription = value; OnProp(nameof(TaskDescription)); } }
-        public string LabelsDisplay { get => _labelsDisplay; set { _labelsDisplay = value; OnProp(nameof(LabelsDisplay)); } }
-        public string WorkNotes { get => _workNotes; set { _workNotes = value; OnProp(nameof(WorkNotes)); } }
-        public string BusinessLogic { get => _businessLogic; set { _businessLogic = value; OnProp(nameof(BusinessLogic)); } }
-        public string CommitMessage { get => _commitMessage; set { _commitMessage = value; OnProp(nameof(CommitMessage)); } }
-        public string TimerDisplay { get => _timerDisplay; set { _timerDisplay = value; OnProp(nameof(TimerDisplay)); } }
-        public string TimerState { get => _timerState; set { _timerState = value; OnProp(nameof(TimerState)); RaiseCommandsChanged(); } }
-        public bool GitAvailable { get => _gitAvailable; set { _gitAvailable = value; OnProp(nameof(GitAvailable)); } }
+        public string TaskUrl        { get => _taskUrl;        set { _taskUrl        = value; OnProp(nameof(TaskUrl)); } }
+        public string StatusMessage  { get => _statusMessage;  set { _statusMessage  = value; OnProp(nameof(StatusMessage)); } }
+        public bool   IsFetching     { get => _isFetching;     set { _isFetching     = value; OnProp(nameof(IsFetching)); } }
+        public string TaskTitle      { get => _taskTitle;      set { _taskTitle      = value; OnProp(nameof(TaskTitle)); } }
+        public string TaskDescription{ get => _taskDescription;set { _taskDescription= value; OnProp(nameof(TaskDescription)); } }
+        public string LabelsDisplay  { get => _labelsDisplay;  set { _labelsDisplay  = value; OnProp(nameof(LabelsDisplay)); } }
+        public string WorkNotes      { get => _workNotes;      set { _workNotes      = value; OnProp(nameof(WorkNotes)); } }
+        public string BusinessLogic  { get => _businessLogic;  set { _businessLogic  = value; OnProp(nameof(BusinessLogic)); } }
+        public string CommitMessage  { get => _commitMessage;  set { _commitMessage  = value; OnProp(nameof(CommitMessage)); } }
+        public string TimerDisplay   { get => _timerDisplay;   set { _timerDisplay   = value; OnProp(nameof(TimerDisplay)); } }
+        public string TimerState     { get => _timerState;     set { _timerState     = value; OnProp(nameof(TimerState)); RaiseCommandsChanged(); } }
+        public bool   GitAvailable   { get => _gitAvailable;   set { _gitAvailable   = value; OnProp(nameof(GitAvailable)); } }
+        public string NewTodoText    { get => _newTodoText;    set { _newTodoText    = value; OnProp(nameof(NewTodoText)); } }
 
-        public ObservableCollection<TodoItemViewModel> Todos { get; } =
-            new ObservableCollection<TodoItemViewModel>();
+        public ObservableCollection<TodoItemViewModel> Todos { get; } = new ObservableCollection<TodoItemViewModel>();
 
-        private string _newTodoText = string.Empty;
-        public string NewTodoText { get => _newTodoText; set { _newTodoText = value; OnProp(nameof(NewTodoText)); } }
-
-        // Summary
-        public int TodoTotal => Todos.Count;
-        public int TodoDone => Todos.Count(t => t.IsDone);
-        public int TodoRunning => Todos.Count(t => t.IsRunning);
+        public int    TodoTotal   => Todos.Count;
+        public int    TodoDone    => Todos.Count(t => t.IsDone);
+        public int    TodoRunning => Todos.Count(t => t.IsRunning);
         public string TodoTotalElapsed
         {
             get
             {
                 var ts = TimeSpan.FromSeconds(Todos.Sum(t => t.Model.TotalElapsed.TotalSeconds));
-                return $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+                return string.Format("{0:D2}:{1:D2}:{2:D2}", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
             }
         }
 
-        // Commands
-        public ICommand FetchCommand { get; }
-        public ICommand ClearCommand { get; }
-        public ICommand StartCommand { get; }
-        public ICommand PauseCommand { get; }
-        public ICommand ResumeCommand { get; }
-        public ICommand StopCommand { get; }
-        public ICommand AddTodoCommand { get; }
-        public ICommand RegenerateCommitCommand { get; }
+        // ── Commands ──────────────────────────────────────────────────────
+        public ICommand FetchCommand           { get; }
+        public ICommand ClearCommand           { get; }
+        public ICommand StartCommand           { get; }
+        public ICommand PauseCommand           { get; }
+        public ICommand ResumeCommand          { get; }
+        public ICommand StopCommand            { get; }
+        public ICommand AddTodoCommand         { get; }
+        public ICommand RegenerateCommitCommand{ get; }
         public ICommand PushAndCompleteCommand { get; }
-        public ICommand SaveAndPauseCommand { get; }
+        public ICommand SaveAndPauseCommand    { get; }
 
-        // Factories (set by container)
-        public Func<string, Task<Core.Interfaces.TaskFetchResult>> FetchTaskFunc { get; set; }
+        public Func<string, Task<TaskFetchResult>> FetchTaskFunc    { get; set; }
         public Action OpenSettingsAction { get; set; }
-        public Action OpenHistoryAction { get; set; }
+        public Action OpenHistoryAction  { get; set; }
 
         public TrackerViewModel(
-            IEventBus eventBus,
-            IStorageService storage,
-            IGitService git,
-            IReportGenerator reportGenerator,
-            TimeTrackingService timer,
-            Func<AppSettings> settings,
-            Action<string> log)
+            IEventBus eventBus, IStorageService storage, IGitService git,
+            IReportGenerator reportGenerator, TimeTrackingService timer,
+            Func<AppSettings> settings, Action<string> log)
         {
-            _eventBus = eventBus;
-            _storage = storage;
-            _git = git;
+            _eventBus        = eventBus;
+            _storage         = storage;
+            _git             = git;
             _reportGenerator = reportGenerator;
-            _timer = timer;
-            _settings = settings;
-            _log = log ?? (_ => { });
+            _timer           = timer;
+            _settings        = settings;
+            _log             = log ?? (_ => { });
 
-            FetchCommand = new RelayCommand(async () => await FetchAsync(), () => !IsFetching);
-            ClearCommand = new RelayCommand(ClearTask);
-            StartCommand = new RelayCommand(StartTask, () => TimerState == "Idle");
-            PauseCommand = new RelayCommand(PauseTask, () => TimerState == "Running");
-            ResumeCommand = new RelayCommand(ResumeTask, () => TimerState == "Paused");
-            StopCommand = new RelayCommand(StopTask, () => TimerState == "Running" || TimerState == "Paused");
-            AddTodoCommand = new RelayCommand(AddTodo, () => !string.IsNullOrWhiteSpace(NewTodoText));
+            // VSTHRD101 fix: ICommand.Execute is void — wrap async work in fire-and-forget helpers,
+            // never use async lambda directly on RelayCommand constructor.
+            FetchCommand            = new RelayCommand(FetchFireAndForget,          () => !IsFetching);
+            ClearCommand            = new RelayCommand(ClearTask);
+            StartCommand            = new RelayCommand(StartTask,                   () => TimerState == "Idle");
+            PauseCommand            = new RelayCommand(PauseTask,                   () => TimerState == "Running");
+            ResumeCommand           = new RelayCommand(ResumeTask,                  () => TimerState == "Paused");
+            StopCommand             = new RelayCommand(StopTask,                    () => TimerState == "Running" || TimerState == "Paused");
+            AddTodoCommand          = new RelayCommand(AddTodo,                     () => !string.IsNullOrWhiteSpace(NewTodoText));
             RegenerateCommitCommand = new RelayCommand(RegenerateCommit);
-            PushAndCompleteCommand = new RelayCommand(async () => await PushAndCompleteAsync());
-            SaveAndPauseCommand = new RelayCommand(async () => await SaveAndPauseAsync());
+            PushAndCompleteCommand  = new RelayCommand(PushAndCompleteFireAndForget);
+            SaveAndPauseCommand     = new RelayCommand(SaveAndPauseFireAndForget);
 
             GitAvailable = _git?.IsAvailable() ?? false;
             StartAutoSave();
             StartUiTimer();
         }
 
-        // ── Fetch ────────────────────────────────────────────────────────
+        // ── Fire-and-forget wrappers (no async void, no async lambda on void delegate) ──
+        private void FetchFireAndForget()          { var _ = FetchAsync(); }
+        private void PushAndCompleteFireAndForget(){ var _ = CompleteFlowAsync(push: true); }
+        private void SaveAndPauseFireAndForget()   { var _ = CompleteFlowAsync(push: false); }
+        private void AutoSaveFireAndForget()       { var _ = AutoSaveCurrentAsync(); }
+
+        // ── Fetch ─────────────────────────────────────────────────────────
         private async Task FetchAsync()
         {
             if (string.IsNullOrWhiteSpace(TaskUrl)) return;
@@ -137,24 +134,18 @@ namespace DhCodetaskExtension.ViewModels
                 var result = await FetchTaskFunc(TaskUrl);
                 if (result.Success)
                 {
-                    _currentTask = result.Task;
-                    TaskTitle = result.Task.Title;
-                    TaskDescription = result.Task.Description;
-                    LabelsDisplay = string.Join(", ", result.Task.Labels ?? new string[0]);
+                    _currentTask      = result.Task;
+                    TaskTitle         = result.Task.Title;
+                    TaskDescription   = result.Task.Description;
+                    LabelsDisplay     = string.Join(", ", result.Task.Labels ?? new string[0]);
                     RegenerateCommit();
-                    StatusMessage = $"✅ Fetched #{result.Task.Id}: {result.Task.Title}";
+                    StatusMessage = string.Format("✅ Fetched #{0}: {1}", result.Task.Id, result.Task.Title);
                     _eventBus.Publish(new TaskFetchedEvent { Task = result.Task, Url = TaskUrl });
                     DetectRepoRoot();
                 }
-                else
-                {
-                    StatusMessage = $"❌ {result.ErrorMessage}";
-                }
+                else { StatusMessage = "❌ " + result.ErrorMessage; }
             }
-            catch (Exception ex)
-            {
-                StatusMessage = $"❌ {ex.Message}";
-            }
+            catch (Exception ex) { StatusMessage = "❌ " + ex.Message; }
             finally { IsFetching = false; }
         }
 
@@ -165,49 +156,23 @@ namespace DhCodetaskExtension.ViewModels
             WorkNotes = BusinessLogic = CommitMessage = string.Empty;
             Todos.Clear();
             _timer.Reset();
-            TimerState = "Idle";
+            TimerState    = "Idle";
             StatusMessage = "Nhập URL issue để bắt đầu.";
-            _ = _storage.ClearCurrentTaskAsync();
+            var _ = _storage.ClearCurrentTaskAsync();
         }
 
-        // ── Timer ────────────────────────────────────────────────────────
-        private void StartTask()
-        {
-            _timer.Start();
-            TimerState = "Running";
-            _eventBus.Publish(new TaskStartedEvent { StartTime = DateTime.Now });
-        }
+        // ── Timer ─────────────────────────────────────────────────────────
+        private void StartTask()  { _timer.Start();  TimerState = "Running"; _eventBus.Publish(new TaskStartedEvent { StartTime = DateTime.Now }); }
+        private void PauseTask()  { foreach (var t in Todos) t.AutoPause(); _timer.Pause();  TimerState = "Paused";  _eventBus.Publish(new TaskPausedEvent  { Elapsed = _timer.GetElapsed() }); AutoSaveFireAndForget(); }
+        private void ResumeTask() { _timer.Resume(); TimerState = "Running"; _eventBus.Publish(new TaskResumedEvent()); }
+        private void StopTask()   { foreach (var t in Todos) t.AutoPause(); _timer.Stop();   TimerState = "Stopped"; }
 
-        private void PauseTask()
-        {
-            foreach (var t in Todos) t.AutoPause();
-            _timer.Pause();
-            TimerState = "Paused";
-            _eventBus.Publish(new TaskPausedEvent { Elapsed = _timer.GetElapsed() });
-            _ = AutoSaveCurrentAsync();
-        }
-
-        private void ResumeTask()
-        {
-            _timer.Resume();
-            TimerState = "Running";
-            _eventBus.Publish(new TaskResumedEvent());
-        }
-
-        private void StopTask()
-        {
-            foreach (var t in Todos) t.AutoPause();
-            _timer.Stop();
-            TimerState = "Stopped";
-        }
-
-        // ── TODO ─────────────────────────────────────────────────────────
+        // ── TODO ──────────────────────────────────────────────────────────
         private void AddTodo()
         {
             if (string.IsNullOrWhiteSpace(NewTodoText)) return;
             var item = new TodoItem { Text = NewTodoText.Trim() };
-            var vm = CreateTodoVm(item);
-            Todos.Add(vm);
+            Todos.Add(CreateTodoVm(item));
             NewTodoText = string.Empty;
             RaiseTodoSummary();
         }
@@ -222,62 +187,42 @@ namespace DhCodetaskExtension.ViewModels
 
         private void RaiseTodoSummary()
         {
-            OnProp(nameof(TodoTotal));
-            OnProp(nameof(TodoDone));
-            OnProp(nameof(TodoRunning));
-            OnProp(nameof(TodoTotalElapsed));
+            OnProp(nameof(TodoTotal)); OnProp(nameof(TodoDone));
+            OnProp(nameof(TodoRunning)); OnProp(nameof(TodoTotalElapsed));
         }
 
-        // ── Commit ───────────────────────────────────────────────────────
+        // ── Commit ────────────────────────────────────────────────────────
         private void RegenerateCommit()
         {
-            if (_currentTask == null) return;
-            CommitMessage = CommitMessageGenerator.Generate(_currentTask, BusinessLogic);
+            if (_currentTask != null)
+                CommitMessage = CommitMessageGenerator.Generate(_currentTask, BusinessLogic);
         }
 
-        // ── Complete ─────────────────────────────────────────────────────
-        private async Task PushAndCompleteAsync()
-        {
-            await CompleteFlowAsync(push: true);
-        }
-
-        private async Task SaveAndPauseAsync()
-        {
-            await CompleteFlowAsync(push: false);
-        }
-
+        // ── Complete flow ─────────────────────────────────────────────────
         private async Task CompleteFlowAsync(bool push)
         {
             foreach (var t in Todos) t.AutoPause();
-            var sessions = _timer.Stop();
-            TimerState = "Stopped";
+            var sessions    = _timer.Stop();
+            TimerState      = "Stopped";
             var completedAt = DateTime.Now;
-
-            var s = _settings();
-            string branch = "unknown";
-            string hash = string.Empty;
-            bool pushed = false;
+            var s           = _settings();
+            string branch   = "unknown";
+            string hash     = string.Empty;
+            bool pushed     = false;
 
             if (push && GitAvailable && !string.IsNullOrEmpty(_repoRoot))
             {
                 StatusMessage = "⏳ Đang commit & push...";
                 var gitResult = await _git.PushAndCompleteAsync(_repoRoot, CommitMessage, s.GitAutoPush);
                 pushed = gitResult.Success;
-                hash = gitResult.CommitHash ?? string.Empty;
+                hash   = gitResult.CommitHash ?? string.Empty;
                 branch = await _git.GetCurrentBranchAsync(_repoRoot);
-                if (!gitResult.Success) _log($"[Git] {gitResult.Error}");
-                _eventBus.Publish(new CommitPushedEvent
-                {
-                    CommitMessage = CommitMessage,
-                    Success = pushed,
-                    Hash = hash,
-                    Error = gitResult.Error
-                });
+                if (!gitResult.Success) _log("[Git] " + gitResult.Error);
+                _eventBus.Publish(new CommitPushedEvent { CommitMessage = CommitMessage, Success = pushed, Hash = hash, Error = gitResult.Error });
             }
-            else if (!push)
+            else if (!push && GitAvailable && !string.IsNullOrEmpty(_repoRoot))
             {
-                if (GitAvailable && !string.IsNullOrEmpty(_repoRoot))
-                    branch = await _git.GetCurrentBranchAsync(_repoRoot);
+                branch = await _git.GetCurrentBranchAsync(_repoRoot);
             }
 
             var startedAt = _timer.StartedAt ?? completedAt.AddSeconds(-_timer.GetElapsed().TotalSeconds);
@@ -287,59 +232,41 @@ namespace DhCodetaskExtension.ViewModels
                 .TaskUrl(_currentTask?.Url ?? TaskUrl)
                 .Labels(_currentTask?.Labels ?? new string[0])
                 .Description(_currentTask?.Description ?? TaskDescription)
-                .StartedAt(startedAt)
-                .CompletedAt(completedAt)
-                .TotalElapsed(_timer.GetElapsed())
-                .Sessions(sessions)
-                .WorkNotes(WorkNotes)
-                .BusinessLogic(BusinessLogic)
+                .StartedAt(startedAt).CompletedAt(completedAt)
+                .TotalElapsed(_timer.GetElapsed()).Sessions(sessions)
+                .WorkNotes(WorkNotes).BusinessLogic(BusinessLogic)
                 .Todos(Todos.Select(v => v.Model).ToList())
-                .CommitMessage(CommitMessage)
-                .GitBranch(branch)
-                .GitCommitHash(hash)
-                .WasPushed(pushed)
+                .CommitMessage(CommitMessage).GitBranch(branch)
+                .GitCommitHash(hash).WasPushed(pushed)
                 .Build();
 
             var histDir = _storage.GetHistoryDirectory();
-            try
-            {
-                await _storage.ArchiveReportAsync(report);
-                await _reportGenerator.GenerateAsync(report, histDir);
-            }
-            catch (Exception ex) { _log($"[Report] {ex.Message}"); }
+            try { await _storage.ArchiveReportAsync(report); await _reportGenerator.GenerateAsync(report, histDir); }
+            catch (Exception ex) { _log("[Report] " + ex.Message); }
 
-            _eventBus.Publish(new ReportSavedEvent
-            {
-                FilePath = report.MarkdownFilePath ?? string.Empty,
-                Report = report
-            });
+            _eventBus.Publish(new ReportSavedEvent   { FilePath = report.MarkdownFilePath ?? string.Empty, Report = report });
             _eventBus.Publish(new TaskCompletedEvent { Report = report });
 
-            if (push)
-                await _storage.ClearCurrentTaskAsync();
+            if (push) await _storage.ClearCurrentTaskAsync();
 
-            string msg = push ? $"✅ Hoàn thành — {FormatSpan(_timer.GetElapsed())}"
-                               : $"⏸ Đã lưu tạm — {FormatSpan(_timer.GetElapsed())}";
-            StatusMessage = msg;
+            StatusMessage = push
+                ? string.Format("✅ Hoàn thành — {0}", FormatSpan(_timer.GetElapsed()))
+                : string.Format("⏸ Đã lưu tạm — {0}", FormatSpan(_timer.GetElapsed()));
 
             if (push) ClearTask();
         }
 
-        // ── Auto-save ────────────────────────────────────────────────────
+        // ── Auto-save ─────────────────────────────────────────────────────
         private void StartAutoSave()
         {
             _autoSave = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
-            _autoSave.Tick += async (s, e) => await AutoSaveCurrentAsync();
+            _autoSave.Tick += (s, e) => AutoSaveFireAndForget();
             _autoSave.Start();
         }
 
         private async Task AutoSaveCurrentAsync()
         {
-            try
-            {
-                var log = BuildWorkLog();
-                if (log != null) await _storage.SaveCurrentTaskAsync(log);
-            }
+            try { var log = BuildWorkLog(); if (log != null) await _storage.SaveCurrentTaskAsync(log); }
             catch { }
         }
 
@@ -348,15 +275,15 @@ namespace DhCodetaskExtension.ViewModels
             if (_currentTask == null && string.IsNullOrEmpty(TaskTitle)) return null;
             return new WorkLog
             {
-                Task = _currentTask,
-                Sessions = _timer.GetSessions(),
-                Todos = Todos.Select(v => v.Model).ToList(),
-                WorkNotes = WorkNotes,
+                Task          = _currentTask,
+                Sessions      = _timer.GetSessions(),
+                Todos         = Todos.Select(v => v.Model).ToList(),
+                WorkNotes     = WorkNotes,
                 BusinessLogic = BusinessLogic,
                 CommitMessage = CommitMessage,
-                StartedAt = _timer.StartedAt,
-                TimerState = TimerState,
-                RepoRoot = _repoRoot
+                StartedAt     = _timer.StartedAt,
+                TimerState    = TimerState,
+                RepoRoot      = _repoRoot
             };
         }
 
@@ -366,62 +293,56 @@ namespace DhCodetaskExtension.ViewModels
             _currentTask = log.Task;
             if (log.Task != null)
             {
-                TaskTitle = log.Task.Title;
+                TaskTitle       = log.Task.Title;
                 TaskDescription = log.Task.Description;
-                TaskUrl = log.Task.Url;
-                LabelsDisplay = string.Join(", ", log.Task.Labels ?? new string[0]);
+                TaskUrl         = log.Task.Url;
+                LabelsDisplay   = string.Join(", ", log.Task.Labels ?? new string[0]);
             }
-            WorkNotes = log.WorkNotes;
+            WorkNotes     = log.WorkNotes;
             BusinessLogic = log.BusinessLogic;
             CommitMessage = log.CommitMessage;
-            _repoRoot = log.RepoRoot ?? string.Empty;
+            _repoRoot     = log.RepoRoot ?? string.Empty;
 
-            var state = log.TimerState == "Running" ? TrackingState.Paused : TrackingState.Paused;
-            _timer.RestoreFrom(log.Sessions, state);
+            _timer.RestoreFrom(log.Sessions, TrackingState.Paused);
             TimerState = "Paused";
 
             Todos.Clear();
-            foreach (var t in log.Todos ?? new System.Collections.Generic.List<TodoItem>())
+            foreach (var t in (log.Todos ?? new System.Collections.Generic.List<TodoItem>()))
                 Todos.Add(CreateTodoVm(t));
 
-            StatusMessage = $"▶ Task \"{TaskTitle}\" được khôi phục. Nhấn Resume để tiếp tục.";
+            StatusMessage = string.Format("▶ Task \"{0}\" được khôi phục. Nhấn Resume để tiếp tục.", TaskTitle);
             await Task.CompletedTask;
         }
 
-        // ── UI timer tick ────────────────────────────────────────────────
+        // ── UI timer ──────────────────────────────────────────────────────
         private void StartUiTimer()
         {
             _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _uiTimer.Tick += (s, e) =>
             {
                 var ts = _timer.GetElapsed();
-                TimerDisplay = $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+                TimerDisplay = string.Format("{0:D2}:{1:D2}:{2:D2}", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
             };
             _uiTimer.Start();
         }
 
         private void DetectRepoRoot()
         {
-            try
-            {
-                var sln = AppDomain.CurrentDomain.BaseDirectory;
-                _repoRoot = _git?.FindRepoRoot(sln) ?? string.Empty;
-                if (!string.IsNullOrEmpty(_repoRoot))
-                    _log($"[Git] Repo: {_repoRoot}");
-            }
+            try { _repoRoot = _git?.FindRepoRoot(AppDomain.CurrentDomain.BaseDirectory) ?? string.Empty; }
             catch { }
         }
 
         private void RaiseCommandsChanged()
         {
-            (StartCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (PauseCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (ResumeCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (StartCommand           as RelayCommand)?.RaiseCanExecuteChanged();
+            (PauseCommand           as RelayCommand)?.RaiseCanExecuteChanged();
+            (ResumeCommand          as RelayCommand)?.RaiseCanExecuteChanged();
+            (StopCommand            as RelayCommand)?.RaiseCanExecuteChanged();
+            (FetchCommand           as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private static string FormatSpan(TimeSpan ts) =>
-            $"{(int)ts.TotalHours}h {ts.Minutes}m {ts.Seconds}s";
+            string.Format("{0}h {1}m {2}s", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
 
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnProp(string n) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));

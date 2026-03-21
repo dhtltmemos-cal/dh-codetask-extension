@@ -1,13 +1,20 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using DhCodetaskExtension.Core.Interfaces;
 using DhCodetaskExtension.Core.Models;
 
 namespace DhCodetaskExtension.Providers.GitProviders
 {
+    // ── Private result type thay cho ValueTuple (không dùng được ở .NET 4.6) ──
+    internal sealed class GitRunResult
+    {
+        public int ExitCode { get; set; }
+        public string Output { get; set; }
+        public string Error { get; set; }
+    }
+
     public sealed class GitService : IGitService
     {
         private readonly Func<AppSettings> _settingsProvider;
@@ -56,11 +63,12 @@ namespace DhCodetaskExtension.Providers.GitProviders
             {
                 var settings = _settingsProvider();
 
-                // Configure user if set in settings
                 if (!string.IsNullOrEmpty(settings.GitUserName))
-                    await Task.Run(() => RunGit(repoRoot, $"config user.name \"{settings.GitUserName}\""));
+                    await Task.Run(() => RunGit(repoRoot,
+                        string.Format("config user.name \"{0}\"", settings.GitUserName)));
                 if (!string.IsNullOrEmpty(settings.GitUserEmail))
-                    await Task.Run(() => RunGit(repoRoot, $"config user.email \"{settings.GitUserEmail}\""));
+                    await Task.Run(() => RunGit(repoRoot,
+                        string.Format("config user.email \"{0}\"", settings.GitUserEmail)));
 
                 // git add -A
                 var addResult = await Task.Run(() => RunGit(repoRoot, "add -A"));
@@ -70,11 +78,11 @@ namespace DhCodetaskExtension.Providers.GitProviders
                 // git commit
                 var safeMsg = commitMessage.Replace("\"", "'");
                 var commitResult = await Task.Run(() =>
-                    RunGit(repoRoot, $"commit -m \"{safeMsg}\""));
+                    RunGit(repoRoot, string.Format("commit -m \"{0}\"", safeMsg)));
                 if (commitResult.ExitCode != 0)
                     return new GitResult { Error = "git commit failed: " + commitResult.Error };
 
-                // git push (if enabled)
+                // git push (optional)
                 if (autoPush)
                 {
                     var pushResult = await Task.Run(() => RunGit(repoRoot, "push"));
@@ -86,7 +94,7 @@ namespace DhCodetaskExtension.Providers.GitProviders
                         };
                 }
 
-                // Get commit hash
+                // get commit hash
                 var hashResult = await Task.Run(() => RunGit(repoRoot, "rev-parse HEAD"));
                 var hash = hashResult.ExitCode == 0 ? hashResult.Output.Trim() : string.Empty;
                 if (hash.Length > 7) hash = hash.Substring(0, 7);
@@ -104,7 +112,8 @@ namespace DhCodetaskExtension.Providers.GitProviders
             }
         }
 
-        private (int ExitCode, string Output, string Error) RunGit(string workDir, string args)
+        // ── Private helper — returns plain class, NO ValueTuple ──────────────
+        private static GitRunResult RunGit(string workDir, string args)
         {
             var psi = new ProcessStartInfo("git", args)
             {
@@ -120,7 +129,12 @@ namespace DhCodetaskExtension.Providers.GitProviders
                 var output = p.StandardOutput.ReadToEnd();
                 var error = p.StandardError.ReadToEnd();
                 p.WaitForExit(30000);
-                return (p.ExitCode, output, error);
+                return new GitRunResult
+                {
+                    ExitCode = p.ExitCode,
+                    Output = output,
+                    Error = error
+                };
             }
         }
     }
