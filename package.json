@@ -3,7 +3,8 @@
   "version": "2.0.0",
   "main": "index.js",
   "scripts": {
-    "git-opushforce": "git opushforce"
+    "git-opushforce": "git opushforce",
+    "git-oconfig": "git oconfig"
   },
   "keywords": [],
   "author": "DH",
