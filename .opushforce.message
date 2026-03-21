@@ -1,0 +1,1 @@
+fix: sửa 4 lỗi build/runtime — ValueTuple .NET4.6, CS8314 pattern matching, VSTHRD101 async void, WPF TwoWay binding readonly; thêm AppLogger file+OutputWindow

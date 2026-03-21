@@ -95,6 +95,7 @@
     <Compile Include="Core\Services\HistoryQueryService.cs" />
     <Compile Include="Core\Services\CommitMessageGenerator.cs" />
     <Compile Include="Core\Services\AtomicFile.cs" />
+    <Compile Include="Core\Services\AppLogger.cs" />
 
     <!-- Providers -->
     <Compile Include="Providers\TaskProviders\GiteaTaskProvider.cs" />
