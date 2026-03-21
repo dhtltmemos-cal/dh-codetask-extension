@@ -20,10 +20,13 @@ namespace DhCodetaskExtension.Providers.StorageProviders
                 ?? throw new ArgumentNullException(nameof(rootDirectoryProvider));
         }
 
-        private string Root => _rootProvider();
-        private string SettingsPath => Path.Combine(Root, "settings.json");
+        private string Root           => _rootProvider();
+        private string SettingsPath   => Path.Combine(Root, "settings.json");
         private string CurrentTaskPath => Path.Combine(Root, "current-task.json");
         public string GetHistoryDirectory() => Path.Combine(Root, "history");
+
+        /// <summary>Returns the absolute path to settings.json (may not exist yet).</summary>
+        public string GetSettingsFilePath() => SettingsPath;
 
         private void EnsureRoot()
         {
@@ -95,17 +98,17 @@ namespace DhCodetaskExtension.Providers.StorageProviders
         public async Task ArchiveReportAsync(CompletionReport report)
         {
             var histDir = GetHistoryDirectory();
-            var year = report.CompletedAt.Year.ToString("D4");
-            var month = report.CompletedAt.Month.ToString("D2");
-            var dir = Path.Combine(histDir, year, month);
+            var year    = report.CompletedAt.Year.ToString("D4");
+            var month   = report.CompletedAt.Month.ToString("D2");
+            var dir     = Path.Combine(histDir, year, month);
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-            string slug = Slugify(report.TaskTitle);
-            string stamp = report.CompletedAt.ToString("yyyyMMdd_HHmmss");
-            string baseName = $"{stamp}_{report.TaskId}_{slug}";
+            string slug     = Slugify(report.TaskTitle);
+            string stamp    = report.CompletedAt.ToString("yyyyMMdd_HHmmss");
+            string baseName = string.Format("{0}_{1}_{2}", stamp, report.TaskId, slug);
 
             var jsonPath = Path.Combine(dir, baseName + ".json");
-            var mdPath = Path.Combine(dir, baseName + ".md");
+            var mdPath   = Path.Combine(dir, baseName + ".md");
 
             report.SetFilePaths(jsonPath, mdPath);
 

@@ -34,20 +34,45 @@ namespace DhCodetaskExtension.ToolWindows
             System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             AppLogger.Instance.Error("DispatcherUnhandled", e.Exception);
-            // Mark as handled so VS does NOT crash/freeze — log and continue
             e.Handled = true;
         }
 
+        // ── Button click handlers ─────────────────────────────────────────
+
         private void BtnHistory_Click(object sender, RoutedEventArgs e)
         {
-            AppLogger.Instance.TryCatch("BtnHistory_Click",
-                () => _vm.OpenHistoryAction?.Invoke());
+            AppLogger.Instance.TryCatch("BtnHistory_Click", () =>
+            {
+                AppLogger.Instance.Info("[UI] User clicked: Xem Lịch sử");
+                _vm.OpenHistoryAction?.Invoke();
+            });
         }
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            AppLogger.Instance.TryCatch("BtnSettings_Click",
-                () => _vm.OpenSettingsAction?.Invoke());
+            AppLogger.Instance.TryCatch("BtnSettings_Click", () =>
+            {
+                AppLogger.Instance.Info("[UI] User clicked: Settings (JSON)");
+                _vm.OpenSettingsAction?.Invoke();
+            });
+        }
+
+        private void BtnOpenLog_Click(object sender, RoutedEventArgs e)
+        {
+            AppLogger.Instance.TryCatch("BtnOpenLog_Click", () =>
+            {
+                AppLogger.Instance.Info("[UI] User clicked: Open Log File");
+                _vm.OpenLogFileAction?.Invoke();
+            });
+        }
+
+        private void BtnOpenConfig_Click(object sender, RoutedEventArgs e)
+        {
+            AppLogger.Instance.TryCatch("BtnOpenConfig_Click", () =>
+            {
+                AppLogger.Instance.Info("[UI] User clicked: Open Config File");
+                _vm.OpenConfigFileAction?.Invoke();
+            });
         }
     }
 }

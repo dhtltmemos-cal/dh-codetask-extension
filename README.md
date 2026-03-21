@@ -1,6 +1,15 @@
-# DH Codetask Extension — DevTask Tracker v3.0
+# DH Codetask Extension — DevTask Tracker v3.1
 
 Extension theo dõi task, time tracking và TODO trực tiếp trong Visual Studio 2017, tích hợp Gitea.
+
+## Tính năng v3.1 (mới)
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| **Settings JSON only** | Chỉ dùng JSON editor cho cấu hình — không còn form dialog |
+| **Action Logging** | Mọi thao tác (Start, Pause, Fetch, Push, TODO...) được ghi ra Output Window |
+| **Open Log Button** | Nút "📄 Open Log" trong panel + menu mở file log hôm nay |
+| **Open Config Button** | Nút "📋 Open Config" trong panel + menu mở settings.json trong editor ngoài |
 
 ## Tính năng v3.0
 
@@ -24,38 +33,44 @@ dh-codetask-extension/
 ├── LICENSE / README.md / CHANGELOG.md / user_changelog.md
 ├── .opushforce.message / .gitignore
 ├── docs/
-│   ├── Instructions.md      ← Spec đầy đủ v3.0
+│   ├── Instructions.md
 │   ├── error-skill-devtasktracker.md
-│   └── rule.md
+│   ├── rule.md
+│   └── tasks/
+│       └── task-2026-03-21-00.md
 └── src/
     ├── DhCodetaskExtension.csproj
-    ├── DevTaskTrackerPackage.cs    ← Package entry point v3.0
-    ├── PackageGuids.cs
-    ├── CommandTable.vsct
-    ├── source.extension.vsixmanifest
-    ├── packages.config
+    ├── DevTaskTrackerPackage.cs        ← v3.1: OpenSettings→JSON, OpenLogFile, OpenConfigFile
+    ├── PackageGuids.cs                 ← v3.1: CmdIdOpenLogFile 0x0700, CmdIdOpenConfigFile 0x0800
+    ├── CommandTable.vsct               ← v3.1: Remove CmdIdSettings form, add UtilityMenuGroup
     ├── Core/
-    │   ├── Interfaces/             ← ITaskProvider, IEventBus, IGitService, …
-    │   ├── Models/                 ← TaskItem, TodoItem, CompletionReport, …
-    │   ├── Events/                 ← TaskStartedEvent, TodoCompletedEvent, …
-    │   └── Services/               ← EventBus, TimeTrackingService, AtomicFile, …
+    │   ├── Interfaces/
+    │   ├── Models/
+    │   ├── Events/
+    │   └── Services/                   ← AppLogger (log to file + Output Window)
     ├── Providers/
-    │   ├── TaskProviders/          ← GiteaTaskProvider, ManualTaskProvider, Factory
-    │   ├── StorageProviders/       ← JsonStorageService
-    │   ├── GitProviders/           ← GitService
-    │   ├── ReportProviders/        ← Json/Markdown/CompositeReportGenerator
-    │   └── NotificationProviders/  ← WebhookNotificationProvider
+    │   ├── TaskProviders/
+    │   ├── StorageProviders/           ← v3.1: GetSettingsFilePath()
+    │   ├── GitProviders/
+    │   ├── ReportProviders/
+    │   └── NotificationProviders/
     ├── ViewModels/
-    │   ├── TrackerViewModel.cs
+    │   ├── TrackerViewModel.cs         ← v3.1: comprehensive action logging + OpenLogFileAction/OpenConfigFileAction
     │   ├── TodoItemViewModel.cs
     │   └── HistoryViewModel.cs
-    ├── Commands/                   ← ShowTrackerWindow, ShowHistoryWindow, …
-    ├── Services/                   ← OutputWindowService, StatusBarService, …
+    ├── Commands/
+    │   ├── ShowTrackerWindow.cs
+    │   ├── ShowHistoryAndSettings.cs   ← v3.1: ShowTaskSettings → AppSettingsJsonDialog
+    │   ├── ShowJsonSettings.cs         ← v3.1: → AppSettingsJsonDialog
+    │   ├── ShowSettings.cs             ← v3.1: stub (0x0400 removed from menu)
+    │   ├── ShowMainWindow.cs
+    │   └── OpenLogAndConfig.cs         ← v3.1: NEW — OpenLogFileCommand, OpenConfigFileCommand
+    ├── Services/
     └── ToolWindows/
-        ├── TrackerControl.xaml/.cs
+        ├── AppSettingsJsonDialog.xaml/.cs  ← v3.1: NEW — JSON editor for AppSettings
+        ├── TrackerControl.xaml/.cs         ← v3.1: utility row + Open Log/Config buttons
         ├── HistoryControl.xaml/.cs
         ├── ReportDetailDialog.xaml/.cs
-        ├── TaskSettingsDialog.xaml/.cs
         └── DevTaskToolWindows.cs
 ```
 
@@ -68,11 +83,49 @@ dh-codetask-extension/
 # 4. View > DevTask Tracker để mở panel
 ```
 
-## Cấu hình Gitea
+## Cấu hình (v3.1 — JSON only)
 
-1. Mở **DH Codetask Extension > DevTask Settings...**
-2. Điền `Gitea Base URL`, `Personal Token`
-3. Dán URL issue vào URL bar → **Fetch**
+Mọi cấu hình đều đọc/ghi từ **một nguồn duy nhất**: `%APPDATA%\DhCodetaskExtension\settings.json`
+
+**Cách mở:**
+- Nút **⚙ Settings (JSON)** trong TrackerControl
+- Menu **DH Codetask Extension > ⚙ Settings (JSON)...**
+- Nút **📋 Open Config** → mở file trong OS editor
+
+**Ví dụ settings.json:**
+```json
+{
+  "GiteaBaseUrl": "http://gitea.company.com",
+  "GiteaToken": "your-personal-access-token",
+  "GiteaUser": "john.doe",
+  "GitAutoPush": false,
+  "GitUserName": "John Doe",
+  "GitUserEmail": "john@company.com",
+  "StoragePath": "",
+  "ReportFormat": "json+markdown",
+  "TimeFormat": "hh:mm",
+  "HistoryDefaultView": "week",
+  "WebhookEnabled": false,
+  "WebhookUrl": "",
+  "Extensions": {}
+}
+```
+
+## Log Files
+
+Log được ghi vào: `%APPDATA%\DhCodetaskExtension\logs\devtask_YYYYMMDD.log`
+
+**Cách mở:**
+- Nút **📄 Open Log** trong TrackerControl
+- Menu **DH Codetask Extension > 📄 Open Log File**
+
+**Những gì được log:**
+- Mọi thao tác user: Start, Pause, Resume, Stop, Fetch, Add/Delete TODO, Push & Complete, Save & Pause
+- Git operations: commit hash, branch, error
+- Report saved: elapsed time, todo count
+- Auto-save events
+- Settings open/save
+- Extension init / restore
 
 ## Luồng cơ bản
 
@@ -86,24 +139,18 @@ URL issue → [Fetch] → [▶ Start] → work... → [⏸ Pause]... → [▶ Re
 ## Mở rộng
 
 ```csharp
-// Thêm provider task mới (Jira, Linear…)
+// Thêm provider task mới
 public class JiraTaskProvider : ITaskProvider {
     public bool CanHandle(string url) => url.Contains("atlassian.net");
-    public async Task<TaskFetchResult> FetchAsync(string url, CancellationToken ct) { … }
+    ...
 }
-// Đăng ký trong Package.InitializeAsync():
 _taskFactory.Register(new JiraTaskProvider(() => Settings));
-// Xong. Không sửa gì khác.
 ```
 
 ## Versioning
 
 Format: `dh-codetask-extension.<version>.<nội-dung-thay-đổi>.zip`
 
-## Changelog
-
-Xem `CHANGELOG.md` để biết lịch sử thay đổi chi tiết.
-
 ---
 
-_DhCodetaskExtension v3.0 — Gitea-first · Provider Pattern · TODO Time Tracking · EventBus · Completion Report · History Browser_
+_DhCodetaskExtension v3.1 — JSON-only Settings · Action Logging · Open Log/Config · Gitea-first · Provider Pattern · TODO Time Tracking_

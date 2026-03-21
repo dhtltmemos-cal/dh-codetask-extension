@@ -144,6 +144,36 @@ Chỉ liệt kê lỗi cần tránh. Không lặp lại cùng một lỗi ở nh
 - Không có một service chịu trách nhiệm cuối cùng cho completion flow
 - Để model, settings, storage, UI rò rỉ trách nhiệm lẫn nhau
 
+## 15) Cú pháp C# không tương thích .NET 4.6 / C# 7.0
+
+### ValueTuple / Tuple syntax
+
+- **KHÔNG** dùng tuple return type `(bool Valid, JObject Obj, string Error)` — .NET 4.6 không có `System.ValueTuple`, gây CS8179 / CS8137.
+- **KHÔNG** dùng `var (a, b) = SomeMethod()` (deconstruction).
+- **THAY THẾ bắt buộc**: khai báo `private sealed class XxxResult { public bool Valid; public T Obj; public string Error; }` và trả về instance của class đó.
+
+### Pattern matching
+
+- **KHÔNG** dùng `if (x is SomeType y)` trên generic type parameter — gây CS8314 trong C# 7.0.
+- **THAY THẾ**: `var y = x as SomeType; if (y != null)`.
+
+### Các tính năng C# cần tránh trên .NET 4.6 / C# 7.0
+
+| Tính năng                            | Lỗi            | Thay thế                             |
+| ------------------------------------ | -------------- | ------------------------------------ |
+| `(T1, T2) Method()` return tuple     | CS8179, CS8137 | `private sealed class ResultXxx { }` |
+| `var (a, b) = expr`                  | CS8179         | Truy cập `.PropertyA`, `.PropertyB`  |
+| `if (x is T y)` trên generic         | CS8314         | `var y = x as T; if (y != null)`     |
+| `switch (x) { case T y: }`           | CS8314         | `if / else if` với `as` cast         |
+| `string interpolation` dạng `$"..."` | OK — C# 6      | (cho phép)                           |
+| `?.` null-conditional                | OK — C# 6      | (cho phép)                           |
+
+### Quy tắc kiểm tra trước khi sinh code
+
+1. Mỗi method trả về nhiều giá trị → **phải dùng class kết quả riêng**, không dùng tuple.
+2. Mỗi lần dùng `is` hoặc `switch` với type → kiểm tra có phải generic type parameter không, nếu có thì dùng `as`.
+3. Tìm kiếm `ValueTuple`, `(bool `, `(string `, `(int ` trong return type → **flag ngay**.
+
 ---
 
 ## Quy tắc bắt buộc cho agent

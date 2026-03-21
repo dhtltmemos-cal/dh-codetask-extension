@@ -63,6 +63,7 @@
     <Compile Include="Commands\ShowMainWindow.cs" />
     <Compile Include="Commands\ShowSettings.cs" />
     <Compile Include="Commands\ShowJsonSettings.cs" />
+    <Compile Include="Commands\OpenLogAndConfig.cs" />
 
     <!-- Services (legacy + new) -->
     <Compile Include="Services\OutputWindowService.cs" />
@@ -128,6 +129,11 @@
     <Compile Include="ToolWindows\ReportDetailDialog.xaml.cs">
       <DependentUpon>ReportDetailDialog.xaml</DependentUpon>
     </Compile>
+    <!-- AppSettingsJsonDialog replaces TaskSettingsDialog as the settings entry point -->
+    <Compile Include="ToolWindows\AppSettingsJsonDialog.xaml.cs">
+      <DependentUpon>AppSettingsJsonDialog.xaml</DependentUpon>
+    </Compile>
+    <!-- TaskSettingsDialog kept for backwards compat but no longer wired to menus -->
     <Compile Include="ToolWindows\TaskSettingsDialog.xaml.cs">
       <DependentUpon>TaskSettingsDialog.xaml</DependentUpon>
     </Compile>
@@ -154,6 +160,11 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="ToolWindows\ReportDetailDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <!-- AppSettingsJsonDialog.xaml — v3.1 JSON settings -->
+    <Page Include="ToolWindows\AppSettingsJsonDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

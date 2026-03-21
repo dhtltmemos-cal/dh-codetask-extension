@@ -21,3 +21,26 @@
 - EventBus non-blocking, WebhookNotificationProvider
 - Settings dialog 12 trường
 - Restore task dở khi khởi động lại VS
+
+## 2026-03-21 17:00 — Task task-2026-03-21-00.md
+
+**Yêu cầu:** Triển khai 3 yêu cầu từ `docs/tasks/task-2026-03-21-00.md`:
+
+1. **Loại bỏ menu Setting (form), chỉ giữ lại Settings (JSON)**
+   - Xóa `CmdIdSettings` (0x0400) khỏi menu
+   - Tất cả settings đọc/ghi từ `settings.json` (AppSettings) duy nhất
+   - Tạo `AppSettingsJsonDialog` thay thế hoàn toàn `TaskSettingsDialog`
+   - Nút "⚙ Settings" trong TrackerControl → mở JSON editor
+
+2. **Log mọi thao tác user ra Output Window**
+   - `TrackerViewModel`: log Start, Pause, Resume, Stop, Fetch OK/Fail, Add TODO, Delete TODO, Clear, Complete Flow, Git push, Report saved, Auto-save, Restore
+   - `TrackerControl`: log mỗi button click qua AppLogger
+   - `DevTaskTrackerPackage`: log OpenSettings, OpenLogFile, OpenConfigFile
+   - `AppLogger.Instance.Init(OutputWindow)` được gọi ngay sau khi OutputWindow sẵn sàng
+
+3. **Bổ sung nút và menu mở file log / file cấu hình**
+   - Menu "DH Codetask Extension > 📄 Open Log File" (CmdIdOpenLogFile 0x0700)
+   - Menu "DH Codetask Extension > 📋 Open Config File" (CmdIdOpenConfigFile 0x0800)
+   - Nút "📄 Open Log" trong TrackerControl (utility row cuối panel)
+   - Nút "📋 Open Config" trong TrackerControl (utility row cuối panel)
+   - Mở bằng `Process.Start(path)` — OS mặc định editor

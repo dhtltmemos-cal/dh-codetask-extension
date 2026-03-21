@@ -1,0 +1,11 @@
+feat(settings): remove form settings, add JSON-only config + action logging + open log/config buttons
+
+- Remove CmdIdSettings (0x0400) form dialog from menus
+- Add AppSettingsJsonDialog as single JSON settings entry point
+- Add OpenLogFileCommand (0x0700) and OpenConfigFileCommand (0x0800)
+- Log all user actions to VS Output Window via AppLogger
+- Add Open Log / Open Config buttons in TrackerControl utility row
+- Expose JsonStorageService.GetSettingsFilePath()
+- Version 3.1
+
+Ref: task-2026-03-21-00

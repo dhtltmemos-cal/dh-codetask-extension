@@ -5,33 +5,13 @@ using Task = System.Threading.Tasks.Task;
 
 namespace DhCodetaskExtension
 {
-    internal sealed class ShowHistoryWindow
-    {
-        private readonly DevTaskTrackerPackage _package;
-        private ShowHistoryWindow(DevTaskTrackerPackage p) { _package = p; }
-
-        public static async Task InitializeAsync(DevTaskTrackerPackage package)
-        {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            var cs = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if (cs == null) return;
-            cs.AddCommand(new MenuCommand(
-                new ShowHistoryWindow(package).Execute,
-                new CommandID(PackageGuids.CommandSetGuid, PackageIds.ShowHistoryWindowId)));
-        }
-
-        private void Execute(object s, EventArgs e)
-            => _package.JoinableTaskFactory.RunAsync(_package.ShowHistoryWindowAsync);
-    }
-
     /// <summary>
-    /// ShowTaskSettings now opens AppSettingsJsonDialog (JSON settings),
-    /// replacing the removed form-based TaskSettingsDialog.
+    /// Command: Mở file log hôm nay trong editor ngoài.
     /// </summary>
-    internal sealed class ShowTaskSettings
+    internal sealed class OpenLogFileCommand
     {
         private readonly DevTaskTrackerPackage _package;
-        private ShowTaskSettings(DevTaskTrackerPackage p) { _package = p; }
+        private OpenLogFileCommand(DevTaskTrackerPackage p) { _package = p; }
 
         public static async Task InitializeAsync(DevTaskTrackerPackage package)
         {
@@ -39,14 +19,39 @@ namespace DhCodetaskExtension
             var cs = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (cs == null) return;
             cs.AddCommand(new MenuCommand(
-                new ShowTaskSettings(package).Execute,
-                new CommandID(PackageGuids.CommandSetGuid, PackageIds.ShowTaskSettingsId)));
+                new OpenLogFileCommand(package).Execute,
+                new CommandID(PackageGuids.CommandSetGuid, PackageIds.CmdIdOpenLogFile)));
         }
 
         private void Execute(object s, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            _package.OpenSettings();
+            _package.OpenLogFile();
+        }
+    }
+
+    /// <summary>
+    /// Command: Mở file settings.json trong editor ngoài.
+    /// </summary>
+    internal sealed class OpenConfigFileCommand
+    {
+        private readonly DevTaskTrackerPackage _package;
+        private OpenConfigFileCommand(DevTaskTrackerPackage p) { _package = p; }
+
+        public static async Task InitializeAsync(DevTaskTrackerPackage package)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var cs = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (cs == null) return;
+            cs.AddCommand(new MenuCommand(
+                new OpenConfigFileCommand(package).Execute,
+                new CommandID(PackageGuids.CommandSetGuid, PackageIds.CmdIdOpenConfigFile)));
+        }
+
+        private void Execute(object s, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _package.OpenConfigFile();
         }
     }
 }

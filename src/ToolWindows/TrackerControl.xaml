@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" d:DesignHeight="900" d:DesignWidth="340">
+             mc:Ignorable="d" d:DesignHeight="960" d:DesignWidth="340">
 
     <UserControl.Resources>
         <Style x:Key="SectionLabel" TargetType="TextBlock">
@@ -21,6 +21,12 @@
             <Setter Property="Width" Value="70"/>
             <Setter Property="Height" Value="30"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <Style x:Key="UtilBtn" TargetType="Button">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="7,0"/>
+            <Setter Property="FontSize" Value="10"/>
             <Setter Property="Margin" Value="0,0,4,0"/>
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
@@ -51,7 +57,7 @@
             <TextBox Text="{Binding TaskTitle, UpdateSourceTrigger=PropertyChanged}"
                      Height="26" FontSize="12" FontWeight="SemiBold" Padding="4,2"
                      VerticalContentAlignment="Center" Margin="0,0,0,4"/>
-            <!-- Mode=OneWay: LabelsDisplay is read-only computed -->
+            <!-- LabelsDisplay is read-only computed -->
             <TextBlock Text="{Binding LabelsDisplay, Mode=OneWay}" FontSize="10" Foreground="#007ACC"
                        Margin="0,0,0,4" TextWrapping="Wrap"/>
             <TextBox Text="{Binding TaskDescription, UpdateSourceTrigger=PropertyChanged}"
@@ -63,7 +69,7 @@
             <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="8">
                 <StackPanel>
                     <DockPanel>
-                        <!-- Mode=OneWay: TimerDisplay and TimerState are read-only -->
+                        <!-- TimerDisplay and TimerState are read-only -->
                         <TextBlock DockPanel.Dock="Right" Text="{Binding TimerState, Mode=OneWay}"
                                    FontSize="10" Foreground="#888" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding TimerDisplay, Mode=OneWay}" FontSize="22"
@@ -107,7 +113,6 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <!-- Mode=OneWay: Text is RW but IsDone is read-only from outside -->
                                     <TextBlock Text="{Binding Text, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"/>
                                     <TextBlock Text="{Binding ElapsedDisplay, Mode=OneWay}" FontSize="10"
                                                Foreground="#007ACC" FontFamily="Consolas"/>
@@ -128,7 +133,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- TODO summary — ALL Mode=OneWay, these are computed read-only properties -->
+            <!-- TODO summary — ALL Mode=OneWay -->
             <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="#555">
                 <Run Text="Tổng: "/>
                 <Run Text="{Binding TodoTotal, Mode=OneWay}"/>
@@ -158,6 +163,8 @@
 
             <!-- ── Actions ───────────────────────────────────────────── -->
             <Separator Margin="0,10,0,6"/>
+
+            <!-- Primary actions -->
             <WrapPanel>
                 <Button Content="🚀 Push &amp; Complete" Height="32" FontSize="11" FontWeight="SemiBold"
                         Padding="10,0" Margin="0,0,4,4" Command="{Binding PushAndCompleteCommand}"
@@ -166,12 +173,31 @@
                         Padding="10,0" Margin="0,0,4,4" Command="{Binding SaveAndPauseCommand}"
                         ToolTip="Lưu trạng thái, không push git"/>
             </WrapPanel>
+
+            <!-- Navigation + Settings -->
             <WrapPanel Margin="0,2,0,0">
                 <Button Content="📚 Xem Lịch sử" Style="{StaticResource ActionBtn}"
                         x:Name="BtnHistory" Click="BtnHistory_Click"/>
-                <Button Content="⚙ Settings" Style="{StaticResource ActionBtn}"
-                        x:Name="BtnSettings" Click="BtnSettings_Click"/>
+                <Button Content="⚙ Settings (JSON)" Style="{StaticResource ActionBtn}"
+                        x:Name="BtnSettings" Click="BtnSettings_Click"
+                        ToolTip="Chỉnh sửa cấu hình JSON (nguồn duy nhất)"/>
             </WrapPanel>
+
+            <!-- Utility row: Open Log / Open Config -->
+            <Border BorderBrush="#EEE" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,6,0,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="🛠" VerticalAlignment="Center"
+                               Margin="0,0,6,0" FontSize="11" Foreground="#888"/>
+                    <WrapPanel>
+                        <Button Content="📄 Open Log" Style="{StaticResource UtilBtn}"
+                                x:Name="BtnOpenLog" Click="BtnOpenLog_Click"
+                                ToolTip="Mở file log hôm nay"/>
+                        <Button Content="📋 Open Config" Style="{StaticResource UtilBtn}"
+                                x:Name="BtnOpenConfig" Click="BtnOpenConfig_Click"
+                                ToolTip="Mở settings.json trong editor ngoài"/>
+                    </WrapPanel>
+                </DockPanel>
+            </Border>
 
         </StackPanel>
     </ScrollViewer>

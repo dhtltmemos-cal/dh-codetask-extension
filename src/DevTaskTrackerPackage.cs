@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +26,7 @@ namespace DhCodetaskExtension
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration(
         "DH Codetask Extension",
-        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.0")]
+        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.1")]
     [ProvideToolWindow(typeof(TrackerToolWindow),
         Style = VsDockStyle.Tabbed, DockedWidth = 360,
         Window = "DocumentWell", Orientation = ToolWindowOrientation.Left)]
@@ -43,39 +45,42 @@ namespace DhCodetaskExtension
         public AppSettings Settings { get; set; }
 
         // ── Singletons ────────────────────────────────────────────────────
-        private EventBus _eventBus;
-        private JsonStorageService _storage;
-        private HistoryQueryService _historyRepo;
-        private GitService _gitService;
-        private TaskProviderFactory _taskFactory;
+        private EventBus               _eventBus;
+        private JsonStorageService     _storage;
+        private HistoryQueryService    _historyRepo;
+        private GitService             _gitService;
+        private TaskProviderFactory    _taskFactory;
         private CompositeReportGenerator _reportGen;
         private WebhookNotificationProvider _webhook;
-        private TimeTrackingService _taskTimer;
+        private TimeTrackingService    _taskTimer;
 
-        // ViewModels kept as fields so InitializeToolWindowAsync can pass them
         private TrackerViewModel _trackerVm;
         private HistoryViewModel _historyVm;
 
-        // ── Package initialization ────────────────────────────────────────
+        // ── Initialization ────────────────────────────────────────────────
         protected override async Task InitializeAsync(
             CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
             // 1. Infrastructure
             OutputWindow = new OutputWindowService(this);
-            StatusBar = new StatusBarService(this);
+            StatusBar    = new StatusBarService(this);
             await OutputWindow.InitializeAsync();
             await StatusBar.InitializeAsync();
 
             // 2. Storage + Settings
-            _storage = new JsonStorageService(GetStorageRoot);
-            Settings = await _storage.LoadSettingsAsync();
+            _storage  = new JsonStorageService(GetStorageRoot);
+            Settings  = await _storage.LoadSettingsAsync();
+
+            // Init AppLogger with OutputWindow
+            AppLogger.Instance.Init(OutputWindow);
+            AppLogger.Instance.Info("DevTaskTracker v3.1 initializing...");
 
             // 3. Core services
-            _eventBus = new EventBus();
+            _eventBus    = new EventBus();
             _historyRepo = new HistoryQueryService(() => Path.Combine(GetStorageRoot(), "history"));
             _historyRepo.StartWatcher();
-            _gitService = new GitService(() => Settings);
-            _taskTimer = new TimeTrackingService();
+            _gitService  = new GitService(() => Settings);
+            _taskTimer   = new TimeTrackingService();
 
             // 4. Task providers
             _taskFactory = new TaskProviderFactory();
@@ -91,17 +96,19 @@ namespace DhCodetaskExtension
             _webhook = new WebhookNotificationProvider(() => Settings);
             _eventBus.Subscribe<TaskCompletedEvent>(e => _webhook.OnEvent(e));
 
-            // 7. ViewModels — must be created BEFORE InitializeToolWindowAsync is called
+            // 7. ViewModels
             _trackerVm = new TrackerViewModel(
                 _eventBus, _storage, _gitService, _reportGen, _taskTimer,
                 () => Settings, msg => OutputWindow.Log(msg));
-            _trackerVm.FetchTaskFunc = url => _taskFactory.FetchAsync(url);
+            _trackerVm.FetchTaskFunc    = url => _taskFactory.FetchAsync(url);
             _trackerVm.OpenSettingsAction = OpenSettings;
-            _trackerVm.OpenHistoryAction = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
+            _trackerVm.OpenHistoryAction  = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
+            _trackerVm.OpenLogFileAction  = OpenLogFile;
+            _trackerVm.OpenConfigFileAction = OpenConfigFile;
 
             _historyVm = new HistoryViewModel(_historyRepo, msg => OutputWindow.Log(msg));
             _historyVm.OpenDetailAction = OpenReportDetail;
-            _historyVm.OpenFileAction = OpenFileInShell;
+            _historyVm.OpenFileAction   = OpenFileInShell;
 
             // 8. Switch to UI thread for command registration
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
@@ -112,6 +119,8 @@ namespace DhCodetaskExtension
             await ShowMainWindow.InitializeAsync(this);
             await ShowSettings.InitializeAsync(this);
             await ShowJsonSettings.InitializeAsync(this);
+            await OpenLogFileCommand.InitializeAsync(this);
+            await OpenConfigFileCommand.InitializeAsync(this);
 
             // 9. Restore in-progress task
             try
@@ -126,7 +135,7 @@ namespace DhCodetaskExtension
             }
             catch (Exception ex) { OutputWindow.Log("[Restore] " + ex.Message); }
 
-            OutputWindow.Log("[DevTaskTracker] v3.0 loaded.");
+            OutputWindow.Log("[DevTaskTracker] v3.1 loaded. Settings: " + _storage.GetSettingsFilePath());
             StatusBar.SetText("DevTask Tracker ready.");
         }
 
@@ -134,7 +143,7 @@ namespace DhCodetaskExtension
         public override IVsAsyncToolWindowFactory GetAsyncToolWindowFactory(Guid toolWindowType)
         {
             if (toolWindowType.Equals(Guid.Parse(TrackerToolWindow.WindowGuidString)) ||
-                toolWindowType.Equals(Guid.Parse(HistoryToolWindow.WindowGuidString)) ||
+                toolWindowType.Equals(Guid.Parse(HistoryToolWindow.WindowGuidString))  ||
                 toolWindowType.Equals(Guid.Parse(MainToolWindow.WindowGuidString)))
                 return this;
             return null;
@@ -144,15 +153,10 @@ namespace DhCodetaskExtension
         {
             if (toolWindowType == typeof(TrackerToolWindow)) return TrackerToolWindow.Title;
             if (toolWindowType == typeof(HistoryToolWindow)) return HistoryToolWindow.Title;
-            if (toolWindowType == typeof(MainToolWindow)) return MainToolWindow.Title;
+            if (toolWindowType == typeof(MainToolWindow))    return MainToolWindow.Title;
             return base.GetToolWindowTitle(toolWindowType, id);
         }
 
-        /// <summary>
-        /// KEY FIX: Return the ViewModel as the state object.
-        /// The ToolWindow constructor receives this state and uses it to set Content.
-        /// This is called both on VS startup (for docked windows) and on ShowToolWindowAsync.
-        /// </summary>
         protected override Task<object> InitializeToolWindowAsync(
             Type toolWindowType, int id, CancellationToken cancellationToken)
         {
@@ -164,7 +168,7 @@ namespace DhCodetaskExtension
                 return Task.FromResult<object>(new MainToolWindowState
                 {
                     OutputWindow = OutputWindow,
-                    StatusBar = StatusBar,
+                    StatusBar    = StatusBar,
                 });
             return Task.FromResult<object>(null);
         }
@@ -182,21 +186,93 @@ namespace DhCodetaskExtension
             await ShowToolWindowAsync(typeof(HistoryToolWindow), 0, true, DisposalToken);
         }
 
-        // ── Settings ──────────────────────────────────────────────────────
+        // ── Settings — JSON only ──────────────────────────────────────────
+
+        /// <summary>
+        /// Mở AppSettingsJsonDialog — nguồn cấu hình duy nhất (thay thế form-based dialog).
+        /// Lưu cấu hình → AppSettings + settings.json.
+        /// </summary>
         public void OpenSettings()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            var dlg = new TaskSettingsDialog(Settings);
-            if (dlg.ShowDialog() == true && dlg.Result != null)
+            OutputWindow.Log("[Settings] Opening JSON settings editor...");
+            var dlg = new AppSettingsJsonDialog(
+                Settings,
+                _storage.GetSettingsFilePath(),
+                newSettings =>
+                {
+                    Settings = newSettings;
+                    JoinableTaskFactory.RunAsync(() => _storage.SaveSettingsAsync(newSettings));
+                    OutputWindow.Log("[Settings] ✔ Settings saved from JSON editor.");
+                    AppLogger.Instance.Info("[Settings] JSON settings saved.");
+                    StatusBar.SetText("Settings saved.");
+                });
+            dlg.ShowDialog();
+        }
+
+        // ── Log & Config file quick-open ──────────────────────────────────
+
+        /// <summary>
+        /// Mở file log hôm nay trong editor mặc định của OS.
+        /// Log path: %APPDATA%\DhCodetaskExtension\logs\devtask_YYYYMMDD.log
+        /// </summary>
+        public void OpenLogFile()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var dir     = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                       "DhCodetaskExtension", "logs");
+            var logFile = Path.Combine(dir, string.Format("devtask_{0:yyyyMMdd}.log", DateTime.Today));
+
+            // Fallback: newest log in directory
+            if (!File.Exists(logFile) && Directory.Exists(dir))
             {
-                Settings = dlg.Result;
-                JoinableTaskFactory.RunAsync(() => _storage.SaveSettingsAsync(dlg.Result));
-                OutputWindow.Log("[Settings] Saved.");
-                StatusBar.SetText("Settings saved.");
+                var files = Directory.GetFiles(dir, "*.log");
+                if (files.Length > 0)
+                    logFile = files.OrderByDescending(f => f).First();
+            }
+
+            if (File.Exists(logFile))
+            {
+                OutputWindow.Log("[Log] Opening: " + logFile);
+                try { Process.Start(logFile); }
+                catch (Exception ex) { OutputWindow.Log("[Log] ERROR opening log: " + ex.Message); }
+            }
+            else
+            {
+                OutputWindow.Log("[Log] No log file found at: " + dir);
+                StatusBar.SetText("No log file found — use the extension first.");
+            }
+        }
+
+        /// <summary>
+        /// Mở file settings.json trong editor mặc định của OS.
+        /// </summary>
+        public void OpenConfigFile()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var path = _storage.GetSettingsFilePath();
+            if (File.Exists(path))
+            {
+                OutputWindow.Log("[Config] Opening: " + path);
+                try { Process.Start(path); }
+                catch (Exception ex) { OutputWindow.Log("[Config] ERROR opening config: " + ex.Message); }
+            }
+            else
+            {
+                // Settings file may not exist yet — save defaults first
+                OutputWindow.Log("[Config] Settings file not found, creating defaults: " + path);
+                JoinableTaskFactory.RunAsync(async () =>
+                {
+                    await _storage.SaveSettingsAsync(Settings ?? new AppSettings());
+                    await JoinableTaskFactory.SwitchToMainThreadAsync();
+                    if (File.Exists(path))
+                        try { Process.Start(path); } catch { }
+                });
             }
         }
 
         // ── Helpers ───────────────────────────────────────────────────────
+
         private void OpenReportDetail(CompletionReportSummary s)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -206,7 +282,7 @@ namespace DhCodetaskExtension
         private static void OpenFileInShell(string path)
         {
             if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                try { System.Diagnostics.Process.Start(path); } catch { }
+                try { Process.Start(path); } catch { }
         }
 
         private string GetStorageRoot()

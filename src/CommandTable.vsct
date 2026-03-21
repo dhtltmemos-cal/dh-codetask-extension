@@ -20,23 +20,23 @@
     </Menus>
 
     <Groups>
-      <!-- Group in top-level menu -->
-      <Group guid="guidDhCodetaskCmdSet" id="TopLevelMenuGroup" priority="0x0100">
+      <!-- Group in top-level menu — Tracker windows -->
+      <Group guid="guidDhCodetaskCmdSet" id="TrackerMenuGroup" priority="0x0100">
         <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenu"/>
       </Group>
-      <!-- Tracker group (DevTask v3.0) -->
-      <Group guid="guidDhCodetaskCmdSet" id="TrackerMenuGroup" priority="0x0200">
+      <!-- Group in top-level menu — Settings & Utilities -->
+      <Group guid="guidDhCodetaskCmdSet" id="TopLevelMenuGroup" priority="0x0200">
         <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenu"/>
       </Group>
-      <!-- Legacy Settings group in Tools menu -->
-      <Group guid="guidDhCodetaskCmdSet" id="SettingsCmdGroup" priority="0x0800">
-        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+      <!-- Group in top-level menu — Log & Config file quick-open -->
+      <Group guid="guidDhCodetaskCmdSet" id="UtilityMenuGroup" priority="0x0300">
+        <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenu"/>
       </Group>
     </Groups>
 
     <Buttons>
 
-      <!-- View > Other Windows > DH Codetask (legacy) -->
+      <!-- View > Other Windows > DH Codetask (legacy panel) -->
       <Button guid="guidDhCodetaskCmdSet" id="ShowMainWindowId" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1"/>
         <Icon guid="ImageCatalogGuid" id="Extension"/>
@@ -69,7 +69,7 @@
         </Strings>
       </Button>
 
-      <!-- DH Codetask Extension > DevTask Tracker -->
+      <!-- DH Codetask Extension > DevTask Tracker... -->
       <Button guid="guidDhCodetaskCmdSet" id="ShowTrackerWindowId" priority="0x0100" type="Button">
         <Parent guid="guidDhCodetaskCmdSet" id="TrackerMenuGroup"/>
         <Icon guid="ImageCatalogGuid" id="Task"/>
@@ -80,7 +80,7 @@
         </Strings>
       </Button>
 
-      <!-- DH Codetask Extension > Task History -->
+      <!-- DH Codetask Extension > Task History... -->
       <Button guid="guidDhCodetaskCmdSet" id="ShowHistoryWindowId" priority="0x0101" type="Button">
         <Parent guid="guidDhCodetaskCmdSet" id="TrackerMenuGroup"/>
         <Icon guid="ImageCatalogGuid" id="History"/>
@@ -91,34 +91,47 @@
         </Strings>
       </Button>
 
-      <!-- DH Codetask Extension > Settings... (XML) -->
-      <Button guid="guidDhCodetaskCmdSet" id="CmdIdSettings" priority="0x0100" type="Button">
+      <!-- DH Codetask Extension > Settings (JSON)... — SINGLE settings entry point -->
+      <Button guid="guidDhCodetaskCmdSet" id="CmdIdJsonSettings" priority="0x0100" type="Button">
         <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenuGroup"/>
         <Icon guid="ImageCatalogGuid" id="Settings"/>
         <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
-          <ButtonText>Settings...</ButtonText>
-          <CommandName>DhCodetaskExtension.Settings</CommandName>
-        </Strings>
-      </Button>
-
-      <!-- DH Codetask Extension > Settings (JSON)... -->
-      <Button guid="guidDhCodetaskCmdSet" id="CmdIdJsonSettings" priority="0x0101" type="Button">
-        <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenuGroup"/>
-        <Strings>
-          <ButtonText>Settings (JSON)...</ButtonText>
+          <ButtonText>⚙ Settings (JSON)...</ButtonText>
           <CommandName>DhCodetaskExtension.JsonSettings</CommandName>
         </Strings>
       </Button>
 
-      <!-- DH Codetask Extension > DevTask Settings... -->
-      <Button guid="guidDhCodetaskCmdSet" id="ShowTaskSettingsId" priority="0x0102" type="Button">
+      <!-- DH Codetask Extension > DevTask Settings... (alias via ShowTaskSettingsId) -->
+      <Button guid="guidDhCodetaskCmdSet" id="ShowTaskSettingsId" priority="0x0101" type="Button">
         <Parent guid="guidDhCodetaskCmdSet" id="TopLevelMenuGroup"/>
         <Icon guid="ImageCatalogGuid" id="Settings"/>
         <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
           <ButtonText>DevTask Settings...</ButtonText>
           <CommandName>DhCodetaskExtension.TaskSettings</CommandName>
+        </Strings>
+      </Button>
+
+      <!-- DH Codetask Extension > Open Log File -->
+      <Button guid="guidDhCodetaskCmdSet" id="CmdIdOpenLogFile" priority="0x0100" type="Button">
+        <Parent guid="guidDhCodetaskCmdSet" id="UtilityMenuGroup"/>
+        <Icon guid="ImageCatalogGuid" id="Log"/>
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>📄 Open Log File</ButtonText>
+          <CommandName>DhCodetaskExtension.OpenLogFile</CommandName>
+        </Strings>
+      </Button>
+
+      <!-- DH Codetask Extension > Open Config File -->
+      <Button guid="guidDhCodetaskCmdSet" id="CmdIdOpenConfigFile" priority="0x0101" type="Button">
+        <Parent guid="guidDhCodetaskCmdSet" id="UtilityMenuGroup"/>
+        <Icon guid="ImageCatalogGuid" id="Settings"/>
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>📋 Open Config File</ButtonText>
+          <CommandName>DhCodetaskExtension.OpenConfigFile</CommandName>
         </Strings>
       </Button>
 
@@ -132,13 +145,15 @@
       <IDSymbol name="ShowMainWindowId"      value="0x0100" />
       <IDSymbol name="ShowTrackerWindowId"   value="0x0200" />
       <IDSymbol name="ShowHistoryWindowId"   value="0x0300" />
-      <IDSymbol name="CmdIdSettings"         value="0x0400" />
+      <!-- 0x0400 (CmdIdSettings form) removed -->
       <IDSymbol name="CmdIdJsonSettings"     value="0x0500" />
       <IDSymbol name="ShowTaskSettingsId"    value="0x0600" />
-      <IDSymbol name="SettingsCmdGroup"      value="0x1300" />
+      <IDSymbol name="CmdIdOpenLogFile"      value="0x0700" />
+      <IDSymbol name="CmdIdOpenConfigFile"   value="0x0800" />
       <IDSymbol name="TopLevelMenu"          value="0x1400" />
       <IDSymbol name="TopLevelMenuGroup"     value="0x1500" />
       <IDSymbol name="TrackerMenuGroup"      value="0x1600" />
+      <IDSymbol name="UtilityMenuGroup"      value="0x1700" />
     </GuidSymbol>
   </Symbols>
 
