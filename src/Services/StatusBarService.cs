@@ -4,12 +4,12 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.Services
+namespace DhCodetaskExtension.Services
 {
     /// <summary>
-    /// Thin wrapper around IVsStatusbar.
-    /// Lets callers set text, show/hide the progress animation,
-    /// and display a progress bar without touching raw COM.
+    /// Wrapper mỏng quanh IVsStatusbar.
+    /// Cho phép caller set text, hiện/ẩn animation progress,
+    /// và hiển thị progress bar mà không cần thao tác raw COM.
     /// </summary>
     public sealed class StatusBarService
     {
@@ -37,7 +37,7 @@ namespace VS2017ExtensionTemplate.Services
         //  Public API                                                          //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Displays <paramref name="text"/> in the status bar.</summary>
+        /// <summary>Hiển thị <paramref name="text"/> trên status bar.</summary>
         public void SetText(string text)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -48,7 +48,7 @@ namespace VS2017ExtensionTemplate.Services
             _statusBar?.SetText(text);
         }
 
-        /// <summary>Shows the spinning animation icon with an optional label.</summary>
+        /// <summary>Hiển thị icon animation với optional label.</summary>
         public void StartAnimation(string text = "Working…")
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -57,7 +57,7 @@ namespace VS2017ExtensionTemplate.Services
             _statusBar?.Animation(fOnOff: 1, pvIcon: ref icon);
         }
 
-        /// <summary>Stops the spinning animation.</summary>
+        /// <summary>Dừng animation.</summary>
         public void StopAnimation()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -65,7 +65,7 @@ namespace VS2017ExtensionTemplate.Services
             _statusBar?.Animation(fOnOff: 0, pvIcon: ref icon);
         }
 
-        /// <summary>Shows a progress bar in the status bar.</summary>
+        /// <summary>Hiển thị progress bar trên status bar.</summary>
         public void ReportProgress(ref uint cookie, string label, uint current, uint total)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -73,7 +73,7 @@ namespace VS2017ExtensionTemplate.Services
                 pwszLabel: label, nComplete: current, nTotal: total);
         }
 
-        /// <summary>Clears/hides the progress bar.</summary>
+        /// <summary>Xóa/ẩn progress bar.</summary>
         public void ClearProgress(ref uint cookie)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -82,8 +82,8 @@ namespace VS2017ExtensionTemplate.Services
         }
 
         /// <summary>
-        /// Convenience: runs <paramref name="work"/> on a background thread while
-        /// showing a status-bar animation, then clears it on the UI thread.
+        /// Chạy <paramref name="work"/> trên background thread trong khi
+        /// hiện animation, rồi xóa animation trên UI thread sau khi xong.
         /// </summary>
         public async Task RunWithAnimationAsync(Func<Task> work, string statusText = "Working…")
         {

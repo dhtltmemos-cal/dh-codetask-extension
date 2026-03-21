@@ -5,38 +5,35 @@ using System.Xml.Linq;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.Services
+namespace DhCodetaskExtension.Services
 {
     /// <summary>
-    /// Manages extension configuration as typed key-value pairs.
-    /// Persists to XML in %AppData%\{ExtensionName}\.
+    /// Quản lý cấu hình extension dưới dạng key-value có kiểu dữ liệu.
+    /// Lưu vào XML trong %AppData%\DhCodetaskExtension\.
     ///
-    /// Features:
-    ///   - Load/save XML file (persists across VS restarts)
-    ///   - Reset to defaults
-    ///   - Type-safe getters (string, int, bool)
-    ///   - Log all changes to OutputWindowService
-    ///   - ConfigChanged event to notify other components
+    /// Tính năng:
+    ///   - Load/save file XML (giữ nguyên qua các lần khởi động VS)
+    ///   - Reset về mặc định
+    ///   - Typed getters (string, int, bool)
+    ///   - Log thay đổi vào OutputWindowService
+    ///   - Event ConfigChanged thông báo cho các component khác
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Change ConfigFileName and AppDataFolderName to match your extension
-    ///   - Add/remove keys in the Defaults dictionary
-    ///   - Add typed convenience properties for your keys
-    ///
-    /// All public methods must be called on the UI thread,
-    /// except getter properties (thread-safe reads from Dictionary).
+    ///   - Đổi ConfigFileName và AppDataFolderName cho phù hợp
+    ///   - Thêm/xóa key trong Defaults dictionary
+    ///   - Thêm typed convenience properties cho các key của bạn
     /// </summary>
     public sealed class ConfigurationService
     {
         // ------------------------------------------------------------------ //
-        //  Constants — TODO: customize for your extension                      //
+        //  Constants                                                           //
         // ------------------------------------------------------------------ //
 
-        private const string AppDataFolderName = "VS2017ExtensionTemplate";
-        private const string ConfigFileName    = "VS2017ExtensionTemplate.config.xml";
-        private const string RootElement       = "VS2017ExtensionTemplateConfig";
+        private const string AppDataFolderName = "DhCodetaskExtension";
+        private const string ConfigFileName    = "DhCodetaskExtension.config.xml";
+        private const string RootElement       = "DhCodetaskExtensionConfig";
 
-        // Key constants — use these in code to avoid magic strings
+        // Key constants
         public const string KeyServerUrl       = "ServerUrl";
         public const string KeyApiKey          = "ApiKey";
         public const string KeyTimeoutSeconds  = "TimeoutSeconds";
@@ -47,7 +44,7 @@ namespace VS2017ExtensionTemplate.Services
         public const string KeyDebugMode       = "DebugMode";
 
         // ------------------------------------------------------------------ //
-        //  Default values — TODO: change to match your extension's needs      //
+        //  Default values                                                      //
         // ------------------------------------------------------------------ //
 
         private static readonly Dictionary<string, object> Defaults =
@@ -79,7 +76,7 @@ namespace VS2017ExtensionTemplate.Services
         //  Events                                                              //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Fired when any config key changes. Args: (key, newValue).</summary>
+        /// <summary>Fired khi bất kỳ config key nào thay đổi. Args: (key, newValue).</summary>
         public event Action<string, string> ConfigChanged;
 
         // ------------------------------------------------------------------ //

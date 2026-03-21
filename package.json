@@ -6,7 +6,7 @@
     "git-opushforce": "git opushforce"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "author": "DH",
+  "license": "MIT",
+  "description": "Extension hỗ trợ lập trình viên trong Visual Studio 2017"
 }

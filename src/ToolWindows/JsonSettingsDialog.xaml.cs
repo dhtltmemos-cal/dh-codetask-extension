@@ -1,20 +1,17 @@
 using System;
 using System.Windows;
 using System.Windows.Media;
-using VS2017ExtensionTemplate.Services;
+using DhCodetaskExtension.Services;
 using Microsoft.VisualStudio.Shell;
 
-namespace VS2017ExtensionTemplate.ToolWindows
+namespace DhCodetaskExtension.ToolWindows
 {
     /// <summary>
-    /// JSON Settings dialog — full-width editor with Format, Validate, Save.
-    /// Opens from: Tools > VS2017 Extension Template Settings (JSON)...
-    /// Uses DTO result classes (JsonParseResult, JsonFormatResult, JsonSaveResult)
-    /// instead of ValueTuple for C# 7.0 / .NET 4.6 compatibility.
+    /// JSON Settings dialog — full-width editor với Format, Validate, Save.
+    /// Mở từ: Tools > DH Codetask Extension Settings (JSON)...
     /// </summary>
     public partial class JsonSettingsDialog : Window
     {
-        // Status bar colors
         private static readonly Color ColorOk      = Color.FromRgb(0xE8, 0xF5, 0xE9);
         private static readonly Color ColorOkBdr   = Color.FromRgb(0x4C, 0xAF, 0x50);
         private static readonly Color ColorErr     = Color.FromRgb(0xFF, 0xF3, 0xE0);
@@ -39,10 +36,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             Loaded += OnLoaded;
         }
 
-        // ================================================================== //
-        //  Load                                                               //
-        // ================================================================== //
-
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             LoadJsonIntoEditor(_jsonConfig.GetCurrentJson());
@@ -57,10 +50,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             _suppressTextChanged = false;
             UpdateCounter();
         }
-
-        // ================================================================== //
-        //  Toolbar handlers                                                   //
-        // ================================================================== //
 
         private void BtnFormat_Click(object sender, RoutedEventArgs e)
         {
@@ -101,11 +90,11 @@ namespace VS2017ExtensionTemplate.ToolWindows
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             MessageBoxResult answer = MessageBox.Show(
-                "Reset configuration to defaults?\nThe current JSON will be overwritten.",
+                "Reset cấu hình về mặc định?\nJSON hiện tại sẽ bị ghi đè.",
                 "Confirm Reset", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (answer != MessageBoxResult.Yes) return;
             LoadJsonIntoEditor(JsonConfigService.DefaultJson);
-            SetStatusInfo("↩  Default JSON loaded. Press Save to persist.");
+            SetStatusInfo("↩  Default JSON loaded. Bấm Save để lưu.");
             _outputWindow.Log("[JsonConfig] Default JSON loaded into editor.");
         }
 
@@ -113,7 +102,7 @@ namespace VS2017ExtensionTemplate.ToolWindows
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             LoadJsonIntoEditor(_jsonConfig.GetCurrentJson());
-            SetStatusInfo("🔄  Reloaded from file. Unsaved changes discarded.");
+            SetStatusInfo("🔄  Reloaded from file. Thay đổi chưa save bị hủy.");
             _outputWindow.Log("[JsonConfig] Editor reloaded from file.");
         }
 
@@ -140,10 +129,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             catch (Exception ex) { SetStatusError("✘  Paste failed: " + ex.Message); }
         }
 
-        // ================================================================== //
-        //  Live text change                                                   //
-        // ================================================================== //
-
         private void TxtJson_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
             if (_suppressTextChanged) return;
@@ -165,10 +150,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             TxtCounter.Text = text.Length.ToString("N0") + " chars · " + lines + " lines";
         }
 
-        // ================================================================== //
-        //  Save / Cancel                                                      //
-        // ================================================================== //
-
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -189,10 +170,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             DialogResult = false;
             Close();
         }
-
-        // ================================================================== //
-        //  Status helpers                                                     //
-        // ================================================================== //
 
         private void SetStatusOk(string message)    => SetStatus(message, ColorOk,   ColorOkBdr);
         private void SetStatusError(string message) => SetStatus(message, ColorErr,  ColorErrBdr);

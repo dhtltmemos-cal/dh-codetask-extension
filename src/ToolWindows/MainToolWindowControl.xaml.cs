@@ -1,20 +1,20 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using VS2017ExtensionTemplate.Services;
+using DhCodetaskExtension.Services;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.ToolWindows
+namespace DhCodetaskExtension.ToolWindows
 {
     /// <summary>
-    /// Code-behind for MainToolWindowControl.xaml.
-    /// All button click handlers live here.
+    /// Code-behind cho MainToolWindowControl.xaml.
+    /// Tất cả button click handlers nằm ở đây.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Add new button handlers following the existing pattern
-    ///   - Access services through the private properties below
-    ///   - All UI handlers run on the UI thread; use ThreadHelper.ThrowIfNotOnUIThread() as guard
+    ///   - Thêm button handlers mới theo pattern có sẵn
+    ///   - Truy cập services qua các private properties bên dưới
+    ///   - Tất cả UI handlers chạy trên UI thread; dùng ThreadHelper.ThrowIfNotOnUIThread() để guard
     /// </summary>
     public partial class MainToolWindowControl : UserControl
     {
@@ -40,7 +40,7 @@ namespace VS2017ExtensionTemplate.ToolWindows
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             OutputWindow.Activate();
-            OutputWindow.Log("Hello from VS2017 Extension Template!");
+            OutputWindow.Log("Hello from DH Codetask Extension!");
             OutputWindow.WriteLine("You can write arbitrary text here.");
             StatusBar.SetText("Written to Output Window.");
         }
@@ -60,7 +60,7 @@ namespace VS2017ExtensionTemplate.ToolWindows
         private void Button_SetStatus_Click(object sender, RoutedEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            StatusBar.SetText($"Hello from VS2017 Extension Template – {DateTime.Now:T}");
+            StatusBar.SetText($"Hello from DH Codetask Extension – {DateTime.Now:T}");
             OutputWindow.Log("Status bar text updated.");
         }
 
@@ -165,7 +165,6 @@ namespace VS2017ExtensionTemplate.ToolWindows
             OutputWindow.Log($"[JsonConfig]  TimeoutSeconds = {JsonConfig.TimeoutSeconds}");
             OutputWindow.Log($"[JsonConfig]  EnableLogging  = {JsonConfig.EnableLogging}");
             OutputWindow.Log($"[JsonConfig]  DebugMode      = {JsonConfig.DebugMode}");
-            // Nested dot-path
             int retry = JsonConfig.Get<int>("Advanced.RetryCount", 3);
             OutputWindow.Log($"[JsonConfig]  Advanced.RetryCount = {retry}");
             StatusBar.SetText("JsonConfig: getters tested.");
@@ -183,10 +182,10 @@ namespace VS2017ExtensionTemplate.ToolWindows
         }
 
         // ================================================================== //
-        //  TODO: Add your own button handlers below                            //
+        //  TODO: Thêm button handlers của bạn bên dưới                        //
         // ================================================================== //
 
-        // Example pattern for a new handler:
+        // Ví dụ pattern cho handler mới:
         //
         // private void Button_MyFeature_Click(object sender, RoutedEventArgs e)
         // {

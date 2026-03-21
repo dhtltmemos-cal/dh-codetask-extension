@@ -1,15 +1,15 @@
 using System;
 using System.ComponentModel.Design;
-using VS2017ExtensionTemplate.ToolWindows;
+using DhCodetaskExtension.ToolWindows;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate
+namespace DhCodetaskExtension
 {
     /// <summary>
-    /// Command that opens the simple Settings dialog from the Tools menu.
-    /// Registered in VSCommandTable.vsct with ID CmdIdSettings (0x0400).
-    /// Appears as: Tools > VS2017 Extension Template Settings...
+    /// Command mở Settings dialog (XML) từ Tools menu.
+    /// Đăng ký trong CommandTable.vsct với ID CmdIdSettings (0x0400).
+    /// Hiển thị tại: Tools > DH Codetask Extension Settings...
     /// </summary>
     internal sealed class ShowSettings
     {
@@ -33,7 +33,7 @@ namespace VS2017ExtensionTemplate
         private void Execute(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            var pkg = (MyPackage)_package;
+            var pkg = (DhCodetaskPackage)_package;
             var dlg = new SettingsDialog(pkg.Config, pkg.OutputWindow, pkg.StatusBar);
             dlg.ShowDialog();
         }

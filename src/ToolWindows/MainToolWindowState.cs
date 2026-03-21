@@ -1,14 +1,14 @@
-using VS2017ExtensionTemplate.Services;
+using DhCodetaskExtension.Services;
 
-namespace VS2017ExtensionTemplate.ToolWindows
+namespace DhCodetaskExtension.ToolWindows
 {
     /// <summary>
-    /// State object passed from MyPackage.InitializeToolWindowAsync
-    /// into MainToolWindow constructor. Carries DTE and all services.
+    /// State object truyền từ DhCodetaskPackage.InitializeToolWindowAsync
+    /// vào constructor của MainToolWindow. Chứa DTE và tất cả services.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   Add properties here for any new services you create,
-    ///   then populate them in MyPackage.InitializeToolWindowAsync.
+    ///   Thêm properties ở đây cho các service mới bạn tạo,
+    ///   rồi khởi tạo chúng trong DhCodetaskPackage.InitializeToolWindowAsync.
     /// </summary>
     public class MainToolWindowState
     {

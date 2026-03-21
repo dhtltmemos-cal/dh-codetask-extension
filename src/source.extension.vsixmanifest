@@ -2,15 +2,14 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
         <!-- TODO: Change the Id to a unique GUID for your extension -->
-        <Identity Id="VS2017ExtensionTemplate.A1B2C3D4-E5F6-7890-ABCD-EF0123456789" Version="1.0" Language="en-US" Publisher="YourName" />
-        <!-- TODO: Customize DisplayName and Description -->
-        <DisplayName>VS2017 Extension Template</DisplayName>
-        <Description xml:space="preserve">A ready-to-use template for building VS2017 extensions using the AsyncPackage pattern, with Settings dialogs, Output Window, Status Bar, and Configuration services built in.</Description>
-        <MoreInfo>https://github.com/your-repo/vs2017-extension-template</MoreInfo>
+        <Identity Id="DhCodetaskExtension.D1E2F3A4-B5C6-7890-ABCD-EF0123456789" Version="1.0" Language="en-US" Publisher="DH" />
+        <DisplayName>DH Codetask Extension</DisplayName>
+        <Description xml:space="preserve">Extension hỗ trợ lập trình viên trong Visual Studio 2017. Sử dụng AsyncPackage pattern với Settings dialogs, Output Window, Status Bar và Configuration services.</Description>
+        <MoreInfo>https://github.com/your-repo/dh-codetask-extension</MoreInfo>
         <License>Resources\LICENSE</License>
         <Icon>Resources\Icon128x128.png</Icon>
         <PreviewImage>Resources\Icon128x128.png</PreviewImage>
-        <Tags>vsix, extension, template, vs2017</Tags>
+        <Tags>vsix, extension, dh-codetask, vs2017</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0.27413, 16.0)" />

@@ -1,19 +1,15 @@
 using System;
 using System.ComponentModel.Design;
-using VS2017ExtensionTemplate.ToolWindows;
+using DhCodetaskExtension.ToolWindows;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate
+namespace DhCodetaskExtension
 {
     /// <summary>
-    /// Command that opens the main tool window.
-    /// Registered in VSCommandTable.vsct with ID ShowMainWindowId (0x0100).
-    /// Appears under View > Other Windows > Extension Template.
-    ///
-    /// HOW TO CUSTOMIZE:
-    ///   - Rename to match your tool window
-    ///   - Change the target window type in Execute()
+    /// Command mở Main Tool Window.
+    /// Đăng ký trong CommandTable.vsct với ID ShowMainWindowId (0x0100).
+    /// Hiển thị tại: View > Other Windows > DH Codetask.
     /// </summary>
     internal sealed class ShowMainWindow
     {

@@ -7,10 +7,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.Services
+namespace DhCodetaskExtension.Services
 {
     // ======================================================================//
-    //  Result DTOs — compatible with C# 7.0 / .NET 4.6 (no ValueTuple)     //
+    //  Result DTOs — tương thích C# 7.0 / .NET 4.6 (không dùng ValueTuple) //
     // ======================================================================//
 
     public sealed class JsonParseResult
@@ -18,7 +18,7 @@ namespace VS2017ExtensionTemplate.Services
         public bool    Valid  { get; set; }
         public JObject Obj    { get; set; }
         public string  Error  { get; set; }
-        public static JsonParseResult Ok(JObject obj)   => new JsonParseResult { Valid = true,  Obj = obj };
+        public static JsonParseResult Ok(JObject obj)    => new JsonParseResult { Valid = true,  Obj = obj };
         public static JsonParseResult Fail(string error) => new JsonParseResult { Valid = false, Error = error };
     }
 
@@ -53,25 +53,24 @@ namespace VS2017ExtensionTemplate.Services
     // ======================================================================//
 
     /// <summary>
-    /// JSON-based configuration service.
-    /// Stores settings as a JSON object in %AppData%\{ExtensionName}\.
-    /// Supports dot-path access (e.g. "Advanced.RetryCount"),
-    /// live diff logging on save, and a clean editor dialog API.
+    /// Dịch vụ cấu hình dạng JSON.
+    /// Lưu settings dưới dạng JSON object trong %AppData%\DhCodetaskExtension\.
+    /// Hỗ trợ dot-path access (e.g. "Advanced.RetryCount"),
+    /// live diff logging khi save, và API cho editor dialog.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Change AppDataFolderName and ConfigFileName
-    ///   - Update DefaultJson with your own schema
-    ///   - Add typed convenience properties for your keys
+    ///   - Đổi AppDataFolderName và ConfigFileName
+    ///   - Cập nhật DefaultJson với schema của bạn
+    ///   - Thêm typed convenience properties cho các key của bạn
     /// </summary>
     public sealed class JsonConfigService
     {
-        // TODO: customize for your extension
-        private const string AppDataFolderName = "VS2017ExtensionTemplate";
-        private const string ConfigFileName    = "VS2017ExtensionTemplate.json";
+        private const string AppDataFolderName = "DhCodetaskExtension";
+        private const string ConfigFileName    = "DhCodetaskExtension.json";
 
         /// <summary>
-        /// Default JSON schema.
-        /// TODO: Replace with your extension's configuration schema.
+        /// JSON schema mặc định.
+        /// TODO: Thay bằng schema cấu hình của extension bạn.
         /// </summary>
         public static readonly string DefaultJson = JsonConvert.SerializeObject(
             new
@@ -85,12 +84,12 @@ namespace VS2017ExtensionTemplate.Services
                 EnableLogging   = true,
                 DebugMode       = false,
                 ShowStatusBar   = true,
-                Tags            = new[] { "vsix", "template" },
+                Tags            = new[] { "vsix", "dh-codetask" },
                 Advanced        = new
                 {
                     RetryCount   = 3,
                     RetryDelayMs = 500,
-                    UserAgent    = "VS2017ExtensionTemplate/1.0"
+                    UserAgent    = "DhCodetaskExtension/1.0"
                 }
             },
             Formatting.Indented);
@@ -108,7 +107,7 @@ namespace VS2017ExtensionTemplate.Services
         //  Events                                                              //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Fired after a successful Save. Payload: list of changed keys.</summary>
+        /// <summary>Fired sau khi Save thành công. Payload: danh sách key đã thay đổi.</summary>
         public event Action<IReadOnlyList<string>> ConfigSaved;
 
         // ------------------------------------------------------------------ //
@@ -154,7 +153,7 @@ namespace VS2017ExtensionTemplate.Services
             catch { return fallback; }
         }
 
-        // Typed convenience properties — TODO: customize for your schema
+        // Typed convenience properties
         public string ServerUrl      => Get<string>("ServerUrl",      "https://api.example.com/v1");
         public string ApiKey         => Get<string>("ApiKey",         "");
         public int    TimeoutSeconds => Get<int>   ("TimeoutSeconds", 30);

@@ -1,18 +1,18 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using VS2017ExtensionTemplate.Services;
+using DhCodetaskExtension.Services;
 using Microsoft.VisualStudio.Shell;
 
-namespace VS2017ExtensionTemplate.ToolWindows
+namespace DhCodetaskExtension.ToolWindows
 {
     /// <summary>
-    /// Simple WPF Settings dialog, modal, opens from Tools menu.
-    /// Loads values from ConfigurationService, validates, saves on Save click.
+    /// WPF Settings dialog, modal, mở từ Tools menu.
+    /// Load values từ ConfigurationService, validate, save khi click Save.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Add more fields to SettingsDialog.xaml and populate/save them here
-    ///   - Update Validate() with your validation rules
+    ///   - Thêm fields vào SettingsDialog.xaml và populate/save chúng ở đây
+    ///   - Cập nhật Validate() với validation rules của bạn
     /// </summary>
     public partial class SettingsDialog : Window
     {
@@ -69,14 +69,14 @@ namespace VS2017ExtensionTemplate.ToolWindows
         {
             string url = TxtServerUrl.Text?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(url))
-            { error = "Server URL must not be empty."; return false; }
+            { error = "Server URL không được để trống."; return false; }
             if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
                 !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            { error = "Server URL must start with http:// or https://"; return false; }
+            { error = "Server URL phải bắt đầu bằng http:// hoặc https://"; return false; }
             if (!int.TryParse(TxtTimeout.Text, out int t) || t < 1 || t > 300)
-            { error = "Timeout must be an integer between 1 and 300."; return false; }
+            { error = "Timeout phải là số nguyên trong khoảng 1–300."; return false; }
             if (!int.TryParse(TxtMaxResults.Text, out int m) || m < 1 || m > 1000)
-            { error = "Max Results must be an integer between 1 and 1000."; return false; }
+            { error = "Max Results phải là số nguyên trong khoảng 1–1000."; return false; }
             error = null;
             return true;
         }

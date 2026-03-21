@@ -5,16 +5,16 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.Services
+namespace DhCodetaskExtension.Services
 {
     /// <summary>
-    /// Manages a custom Output Window pane for this extension.
-    /// Wraps IVsOutputWindow / IVsOutputWindowPane so callers never
-    /// touch raw COM interfaces directly.
+    /// Quản lý Output Window pane riêng cho extension này.
+    /// Bọc IVsOutputWindow / IVsOutputWindowPane để caller không cần
+    /// làm việc trực tiếp với COM interface.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Change PaneGuid to a newly generated GUID (must be unique per extension)
-    ///   - Change PaneTitle to your extension's name
+    ///   - Thay PaneGuid bằng GUID mới (phải unique cho mỗi extension)
+    ///   - Thay PaneTitle bằng tên extension của bạn
     /// </summary>
     public sealed class OutputWindowService
     {
@@ -22,7 +22,7 @@ namespace VS2017ExtensionTemplate.Services
         public static readonly Guid PaneGuid =
             new Guid("A1B2C3D4-E5F6-7890-ABCD-EF0123456789");
 
-        private const string PaneTitle = "VS2017 Extension Template";
+        private const string PaneTitle = "DH Codetask Extension";
 
         private IVsOutputWindowPane _pane;
         private readonly AsyncPackage _package;
@@ -33,13 +33,9 @@ namespace VS2017ExtensionTemplate.Services
         }
 
         // ------------------------------------------------------------------ //
-        //  Initialization (call once, on background thread is fine)           //
+        //  Initialization                                                      //
         // ------------------------------------------------------------------ //
 
-        /// <summary>
-        /// Creates (or retrieves) the custom Output pane.
-        /// Safe to call from a background thread – switches to UI thread internally.
-        /// </summary>
         public async Task InitializeAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -65,28 +61,28 @@ namespace VS2017ExtensionTemplate.Services
         //  Public API                                                          //
         // ------------------------------------------------------------------ //
 
-        /// <summary>Writes a line of text (appends \n automatically).</summary>
+        /// <summary>Ghi một dòng text (tự động thêm \n).</summary>
         public void WriteLine(string message)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _pane?.OutputString(message + "\n");
         }
 
-        /// <summary>Writes a timestamped line – useful for log-style output.</summary>
+        /// <summary>Ghi một dòng có timestamp — dùng cho log.</summary>
         public void Log(string message)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _pane?.OutputString($"[{DateTime.Now:HH:mm:ss}] {message}\n");
         }
 
-        /// <summary>Brings this pane to the foreground in the Output window.</summary>
+        /// <summary>Đưa pane này lên foreground trong Output window.</summary>
         public void Activate()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _pane?.Activate();
         }
 
-        /// <summary>Removes all text from the pane.</summary>
+        /// <summary>Xóa toàn bộ text trong pane.</summary>
         public void Clear()
         {
             ThreadHelper.ThrowIfNotOnUIThread();

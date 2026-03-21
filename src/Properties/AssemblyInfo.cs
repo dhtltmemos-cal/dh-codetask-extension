@@ -1,13 +1,12 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-// TODO: Update these attributes with your extension's information
-[assembly: AssemblyTitle("VS2017ExtensionTemplate")]
-[assembly: AssemblyDescription("A ready-to-use template for VS2017 extensions")]
+[assembly: AssemblyTitle("DhCodetaskExtension")]
+[assembly: AssemblyDescription("Extension hỗ trợ lập trình viên trong Visual Studio 2017")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("VS2017ExtensionTemplate")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyCompany("DH")]
+[assembly: AssemblyProduct("DhCodetaskExtension")]
+[assembly: AssemblyCopyright("Copyright © 2026 DH")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]

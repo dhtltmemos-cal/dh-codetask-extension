@@ -2,20 +2,19 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using VS2017ExtensionTemplate.Services;
-using VS2017ExtensionTemplate.ToolWindows;
+using DhCodetaskExtension.Services;
+using DhCodetaskExtension.ToolWindows;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
-// SampleOptionsPage is defined in VS2017ExtensionTemplate.Services (OptionsService.cs)
 
-namespace VS2017ExtensionTemplate
+namespace DhCodetaskExtension
 {
     /// <summary>
-    /// VS2017 Extension Template — Main Package Entry Point.
+    /// DH Codetask Extension — Main Package Entry Point.
     ///
-    /// This template demonstrates the AsyncPackage pattern for Visual Studio 2017.
-    /// It includes:
+    /// Sử dụng AsyncPackage pattern cho Visual Studio 2017.
+    /// Bao gồm:
     ///   - OutputWindowService  : custom Output pane
     ///   - StatusBarService     : status bar text and progress
     ///   - ConfigurationService : XML-based key-value config (persists to %AppData%)
@@ -25,15 +24,15 @@ namespace VS2017ExtensionTemplate
     ///   - JsonSettingsDialog   : a JSON editor settings dialog (Tools menu)
     ///
     /// HOW TO CUSTOMIZE:
-    ///   1. Replace all GUIDs in PackageGuids.cs and VSCommandTable.vsct
+    ///   1. Replace all GUIDs in PackageGuids.cs and CommandTable.vsct
     ///   2. Rename the namespace and assembly in csproj + AssemblyInfo.cs
     ///   3. Update source.extension.vsixmanifest (Id, DisplayName, Description)
     ///   4. Add your own services and commands following the existing patterns
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration(
-        "VS2017 Extension Template",
-        "A ready-to-use template for building VS2017 extensions with AsyncPackage, settings and tool windows.",
+        "DH Codetask Extension",
+        "Extension hỗ trợ lập trình viên trong Visual Studio 2017.",
         "1.0")]
     [ProvideToolWindow(typeof(MainToolWindow),
         Style = VsDockStyle.Tabbed, DockedWidth = 300,
@@ -41,14 +40,12 @@ namespace VS2017ExtensionTemplate
     [Guid(PackageGuids.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(Services.SampleOptionsPage),
-        "VS2017 Extension Template", "General",
+        "DH Codetask Extension", "General",
         categoryResourceID: 0, pageNameResourceID: 0,
         supportsAutomation: true)]
-    public sealed class MyPackage : AsyncPackage
+    public sealed class DhCodetaskPackage : AsyncPackage
     {
         // ── Public service properties ─────────────────────────────────────
-        // Expose services so Commands can access them via (MyPackage)package cast.
-
         public OutputWindowService  OutputWindow { get; private set; }
         public StatusBarService     StatusBar    { get; private set; }
         public ConfigurationService Config       { get; private set; }
@@ -81,8 +78,8 @@ namespace VS2017ExtensionTemplate
             await ShowJsonSettings.InitializeAsync(this);
 
             // 5. Ready
-            OutputWindow.Log("VS2017 Extension Template loaded successfully.");
-            StatusBar.SetText("VS2017 Extension Template ready.");
+            OutputWindow.Log("DH Codetask Extension loaded successfully.");
+            StatusBar.SetText("DH Codetask Extension ready.");
         }
 
         // ── Async tool window factory ─────────────────────────────────────

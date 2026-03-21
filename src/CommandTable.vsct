@@ -6,7 +6,7 @@
   <Extern href="vsshlids.h"/>
   <Include href="KnownImageIds.vsct"/>
 
-  <Commands package="guidMyPackage">
+  <Commands package="guidDhCodetaskPackage">
 
     <!-- ================================================================ -->
     <!--  Groups                                                           -->
@@ -14,7 +14,7 @@
     <Groups>
 
       <!-- Settings group in Tools menu -->
-      <Group guid="guidMyPackageCmdSet" id="SettingsCmdGroup" priority="0x0800">
+      <Group guid="guidDhCodetaskCmdSet" id="SettingsCmdGroup" priority="0x0800">
         <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
       </Group>
 
@@ -25,34 +25,34 @@
     <!-- ================================================================ -->
     <Buttons>
 
-      <!-- View > Other Windows > Extension Template -->
-      <Button guid="guidMyPackageCmdSet" id="ShowMainWindowId" priority="0x0100" type="Button">
+      <!-- View > Other Windows > DH Codetask -->
+      <Button guid="guidDhCodetaskCmdSet" id="ShowMainWindowId" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1"/>
         <Icon guid="ImageCatalogGuid" id="Extension"/>
         <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
-          <ButtonText>Extension Template</ButtonText>
-          <CommandName>VS2017ExtensionTemplate.ShowMainWindow</CommandName>
+          <ButtonText>DH Codetask</ButtonText>
+          <CommandName>DhCodetaskExtension.ShowMainWindow</CommandName>
         </Strings>
       </Button>
 
-      <!-- Tools > VS2017 Extension Template Settings... -->
-      <Button guid="guidMyPackageCmdSet" id="CmdIdSettings" priority="0x0100" type="Button">
-        <Parent guid="guidMyPackageCmdSet" id="SettingsCmdGroup"/>
+      <!-- Tools > DH Codetask Extension Settings... -->
+      <Button guid="guidDhCodetaskCmdSet" id="CmdIdSettings" priority="0x0100" type="Button">
+        <Parent guid="guidDhCodetaskCmdSet" id="SettingsCmdGroup"/>
         <Icon guid="ImageCatalogGuid" id="Settings"/>
         <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
-          <ButtonText>VS2017 Extension Template Settings...</ButtonText>
-          <CommandName>VS2017ExtensionTemplate.Settings</CommandName>
+          <ButtonText>DH Codetask Extension Settings...</ButtonText>
+          <CommandName>DhCodetaskExtension.Settings</CommandName>
         </Strings>
       </Button>
 
-      <!-- Tools > VS2017 Extension Template Settings (JSON)... -->
-      <Button guid="guidMyPackageCmdSet" id="CmdIdJsonSettings" priority="0x0101" type="Button">
-        <Parent guid="guidMyPackageCmdSet" id="SettingsCmdGroup"/>
+      <!-- Tools > DH Codetask Extension Settings (JSON)... -->
+      <Button guid="guidDhCodetaskCmdSet" id="CmdIdJsonSettings" priority="0x0101" type="Button">
+        <Parent guid="guidDhCodetaskCmdSet" id="SettingsCmdGroup"/>
         <Strings>
-          <ButtonText>VS2017 Extension Template Settings (JSON)...</ButtonText>
-          <CommandName>VS2017ExtensionTemplate.JsonSettings</CommandName>
+          <ButtonText>DH Codetask Extension Settings (JSON)...</ButtonText>
+          <CommandName>DhCodetaskExtension.JsonSettings</CommandName>
         </Strings>
       </Button>
 
@@ -65,9 +65,9 @@
   <!-- ================================================================== -->
   <Symbols>
     <!-- TODO: Replace both GUIDs below with your own generated GUIDs -->
-    <GuidSymbol name="guidMyPackage"    value="{D1E2F3A4-B5C6-7890-ABCD-EF0123456789}" />
+    <GuidSymbol name="guidDhCodetaskPackage"    value="{D1E2F3A4-B5C6-7890-ABCD-EF0123456789}" />
 
-    <GuidSymbol name="guidMyPackageCmdSet" value="{E2F3A4B5-C6D7-8901-BCDE-F01234567890}">
+    <GuidSymbol name="guidDhCodetaskCmdSet" value="{E2F3A4B5-C6D7-8901-BCDE-F01234567890}">
       <IDSymbol name="ShowMainWindowId"  value="0x0100" />
       <IDSymbol name="CmdIdSettings"     value="0x0400" />
       <IDSymbol name="CmdIdJsonSettings" value="0x0500" />

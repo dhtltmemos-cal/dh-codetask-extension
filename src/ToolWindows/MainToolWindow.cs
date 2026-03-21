@@ -3,31 +3,31 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Shell;
 
-namespace VS2017ExtensionTemplate.ToolWindows
+namespace DhCodetaskExtension.ToolWindows
 {
     /// <summary>
-    /// Main dockable tool window for the extension.
-    /// Opens via: View > Other Windows > Extension Template
+    /// Tool window chính của extension (dockable).
+    /// Mở qua: View > Other Windows > DH Codetask
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Change WindowGuidString to a newly generated GUID
-    ///   - Change Title to your window name
-    ///   - Change BitmapImageMoniker to any KnownMonikers icon
+    ///   - Thay WindowGuidString bằng GUID mới tạo
+    ///   - Thay Title bằng tên window của bạn
+    ///   - Thay BitmapImageMoniker bằng icon KnownMonikers bạn muốn
     /// </summary>
     [Guid(WindowGuidString)]
     public class MainToolWindow : ToolWindowPane
     {
         // TODO: Generate a new GUID for your tool window
         public const string WindowGuidString = "F1A2B3C4-D5E6-7890-ABCD-EF0123456789";
-        public const string Title            = "Extension Template";
+        public const string Title            = "DH Codetask";
 
         /// <summary>
-        /// The "state" parameter is the object returned from MyPackage.InitializeToolWindowAsync.
+        /// Tham số <paramref name="state"/> là object trả về từ DhCodetaskPackage.InitializeToolWindowAsync.
         /// </summary>
         public MainToolWindow(MainToolWindowState state) : base()
         {
             Caption            = Title;
-            BitmapImageMoniker = KnownMonikers.Extension; // TODO: Choose your icon
+            BitmapImageMoniker = KnownMonikers.Extension; // TODO: Chọn icon của bạn
             Content            = new MainToolWindowControl(state);
         }
     }

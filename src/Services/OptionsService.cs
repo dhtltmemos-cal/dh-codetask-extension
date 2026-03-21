@@ -5,41 +5,41 @@ using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
-namespace VS2017ExtensionTemplate.Services
+namespace DhCodetaskExtension.Services
 {
     // ====================================================================== //
     //  Options Page                                                           //
     // ====================================================================== //
 
     /// <summary>
-    /// Appears under Tools › Options › VS2017 Extension Template › General.
-    /// Properties are automatically persisted to VS registry by DialogPage.
+    /// Hiển thị tại Tools › Options › DH Codetask Extension › General.
+    /// Properties được tự động persist vào VS registry bởi DialogPage.
     ///
     /// HOW TO CUSTOMIZE:
-    ///   - Add/remove/rename properties here
-    ///   - Use [Category], [DisplayName], [Description] attributes for UI grouping
-    ///   - Update the ProvideOptionPage attribute on MyPackage to match category name
+    ///   - Thêm/xóa/đổi tên properties
+    ///   - Dùng [Category], [DisplayName], [Description] để nhóm UI
+    ///   - Cập nhật ProvideOptionPage attribute trên DhCodetaskPackage
     /// </summary>
     public class SampleOptionsPage : DialogPage
     {
         [Category("Connection")]
         [DisplayName("Server URL")]
-        [Description("URL of the backend server used by this extension.")]
+        [Description("URL của backend server được dùng bởi extension này.")]
         public string ServerUrl { get; set; } = "https://api.example.com";
 
         [Category("Behavior")]
         [DisplayName("Auto Format on Save")]
-        [Description("Automatically format the active document when it is saved.")]
+        [Description("Tự động format document đang active khi save.")]
         public bool AutoFormat { get; set; } = false;
 
         [Category("Behavior")]
         [DisplayName("Max Log Items")]
-        [Description("Maximum number of items shown in the Output pane log.")]
+        [Description("Số lượng tối đa items hiển thị trong Output pane log.")]
         public int MaxLogItems { get; set; } = 200;
 
         [Category("Behavior")]
         [DisplayName("Enable Debug Logging")]
-        [Description("Log verbose debug information to the Output pane.")]
+        [Description("Log thông tin debug chi tiết vào Output pane.")]
         public bool EnableDebugLog { get; set; } = false;
     }
 
@@ -48,9 +48,9 @@ namespace VS2017ExtensionTemplate.Services
     // ====================================================================== //
 
     /// <summary>
-    /// Thin wrapper around <see cref="SampleOptionsPage"/>.
-    /// Provides typed access to settings and a helper to open the Options dialog.
-    /// All public methods must be called on the UI thread.
+    /// Wrapper mỏng quanh <see cref="SampleOptionsPage"/>.
+    /// Cung cấp typed access đến settings và helper để mở Options dialog.
+    /// Tất cả public methods phải được gọi trên UI thread.
     /// </summary>
     public sealed class OptionsService
     {
@@ -72,13 +72,12 @@ namespace VS2017ExtensionTemplate.Services
         public int    MaxLogItems    => GetPage().MaxLogItems;
         public bool   EnableDebugLog => GetPage().EnableDebugLog;
 
-        /// <summary>Opens the Tools > Options dialog at the extension's settings page.</summary>
+        /// <summary>Mở Tools > Options dialog tại trang settings của extension.</summary>
         public void OpenOptionsDialog()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             var dte = _serviceProvider.GetService(typeof(DTE)) as DTE2;
-            // TODO: Update category name to match your ProvideOptionPage attribute
-            dte?.ExecuteCommand("Tools.Options", "VS2017 Extension Template.General");
+            dte?.ExecuteCommand("Tools.Options", "DH Codetask Extension.General");
         }
     }
 }

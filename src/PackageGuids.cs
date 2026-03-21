@@ -1,15 +1,15 @@
 using System;
 
-namespace VS2017ExtensionTemplate
+namespace DhCodetaskExtension
 {
     /// <summary>
     /// Centralised GUID + command-ID constants.
-    /// Values must match the GuidSymbol / IDSymbol entries in VSCommandTable.vsct.
+    /// Values must match the GuidSymbol / IDSymbol entries in CommandTable.vsct.
     ///
     /// HOW TO CUSTOMIZE:
     ///   1. Generate new GUIDs (Tools > Create GUID in Visual Studio, or use online generator)
     ///   2. Replace PackageGuidString and CommandSetGuidString with your new GUIDs
-    ///   3. Update VSCommandTable.vsct GuidSymbol values to match
+    ///   3. Update CommandTable.vsct GuidSymbol values to match
     ///   4. Update source.extension.vsixmanifest Identity Id
     /// </summary>
     internal static class PackageGuids
@@ -24,7 +24,7 @@ namespace VS2017ExtensionTemplate
     }
 
     /// <summary>
-    /// Integer command IDs — must match IDSymbol values in VSCommandTable.vsct.
+    /// Integer command IDs — must match IDSymbol values in CommandTable.vsct.
     /// </summary>
     internal static class PackageIds
     {

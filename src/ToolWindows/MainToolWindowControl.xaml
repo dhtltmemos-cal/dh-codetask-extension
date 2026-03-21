@@ -1,4 +1,4 @@
-<UserControl x:Class="VS2017ExtensionTemplate.ToolWindows.MainToolWindowControl"
+<UserControl x:Class="DhCodetaskExtension.ToolWindows.MainToolWindowControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -13,11 +13,11 @@
                     Margin="0,12,0,12">
 
             <!-- Title -->
-            <TextBlock Text="VS2017 Extension Template"
+            <TextBlock Text="DH Codetask Extension"
                        FontWeight="Bold" FontSize="13"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,4"/>
-            <TextBlock Text="Ready-to-use VS2017 extension scaffold"
+            <TextBlock Text="Extension hỗ trợ lập trình viên"
                        FontSize="10" Foreground="Gray"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,12"/>
@@ -54,11 +54,11 @@
             <Button Content="Test JSON Getters"     Click="Button_JsonConfigTest_Click"   Width="220" Height="30" Margin="0,0,0,6"/>
             <Button Content="Reset JSON to Default" Click="Button_JsonConfigReset_Click"  Width="220" Height="30" Margin="0,0,0,6"/>
 
-            <!-- ── TODO: Add your own sections below ─────────────────── -->
+            <!-- ── TODO: Thêm các section của bạn bên dưới ───────────── -->
             <TextBlock Text="── Your Features Here ──"
                        HorizontalAlignment="Center"
                        Margin="0,8,0,4" Foreground="#007ACC" FontSize="11"/>
-            <TextBlock Text="Add new buttons and handlers&#10;following the patterns above."
+            <TextBlock Text="Thêm button và handler mới&#10;theo pattern có sẵn ở trên."
                        HorizontalAlignment="Center"
                        TextAlignment="Center"
                        FontSize="10" Foreground="Gray"
