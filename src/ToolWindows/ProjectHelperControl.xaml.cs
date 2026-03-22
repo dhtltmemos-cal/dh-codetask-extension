@@ -61,7 +61,7 @@ namespace DhCodetaskExtension.ToolWindows
             });
         }
 
-        // ── Buttons ───────────────────────────────────────────────────────
+        // ── File list buttons ─────────────────────────────────────────────
 
         private void BtnForceRefresh_Click(object sender, RoutedEventArgs e)
         {
@@ -120,6 +120,31 @@ namespace DhCodetaskExtension.ToolWindows
             });
         }
 
+        // ── Search result buttons ─────────────────────────────────────────
+
+        private void BtnOpenSearchResult_Click(object sender, RoutedEventArgs e)
+        {
+            AppLogger.Instance.TryCatch("BtnOpenSearchResult_Click", () =>
+            {
+                var fe = sender as FrameworkElement;
+                if (fe == null) return;
+                var result = fe.Tag as RipgrepSearchResult;
+                if (result != null) OpenFileImpl(result.FilePath);
+            });
+        }
+
+        private void BtnCopySearchPath_Click(object sender, RoutedEventArgs e)
+        {
+            AppLogger.Instance.TryCatch("BtnCopySearchPath_Click", () =>
+            {
+                var fe = sender as FrameworkElement;
+                if (fe == null) return;
+                var result = fe.Tag as RipgrepSearchResult;
+                if (result != null)
+                    CopyToClipboardImpl(string.Format("{0}:{1}", result.FilePath, result.LineNumber));
+            });
+        }
+
         // ── Implementations ───────────────────────────────────────────────
 
         private static void OpenFileImpl(string path)
@@ -130,7 +155,7 @@ namespace DhCodetaskExtension.ToolWindows
                 Process.Start(new ProcessStartInfo
                 {
                     FileName        = path,
-                    UseShellExecute = true   // OS file association → Visual Studio for .sln/.csproj
+                    UseShellExecute = true
                 });
                 AppLogger.Instance.Info("[ProjectHelper] 📂 Opened: " + path);
             }
@@ -145,7 +170,7 @@ namespace DhCodetaskExtension.ToolWindows
         private static void CopyToClipboardImpl(string text)
         {
             if (string.IsNullOrEmpty(text)) return;
-            try { Clipboard.SetText(text); AppLogger.Instance.Info("[ProjectHelper] 📋 Copied: " + text); }
+            try { System.Windows.Clipboard.SetText(text); AppLogger.Instance.Info("[ProjectHelper] 📋 Copied: " + text); }
             catch (Exception ex) { AppLogger.Instance.Error("CopyToClipboardImpl", ex); }
         }
 

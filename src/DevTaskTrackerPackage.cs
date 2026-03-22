@@ -26,7 +26,7 @@ namespace DhCodetaskExtension
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration(
         "DH Codetask Extension",
-        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.4")]
+        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.5")]
     [ProvideToolWindow(typeof(TrackerToolWindow),
         Style = VsDockStyle.Tabbed, DockedWidth = 360,
         Window = "DocumentWell", Orientation = ToolWindowOrientation.Left)]
@@ -74,7 +74,7 @@ namespace DhCodetaskExtension
             Settings  = await _storage.LoadSettingsAsync();
 
             AppLogger.Instance.Init(OutputWindow);
-            AppLogger.Instance.Info("DevTaskTracker v3.4 initializing...");
+            AppLogger.Instance.Info("DevTaskTracker v3.5 initializing...");
 
             // 3. Core services
             _eventBus    = new EventBus();
@@ -100,17 +100,17 @@ namespace DhCodetaskExtension
             _webhook = new WebhookNotificationProvider(() => Settings);
             _eventBus.Subscribe<TaskCompletedEvent>(e => _webhook.OnEvent(e));
 
-            // 8. TrackerViewModel (no SolutionFileService — moved to ProjectHelper)
+            // 8. TrackerViewModel
             _trackerVm = new TrackerViewModel(
                 _eventBus, _storage, _gitService, _reportGen, _taskTimer,
                 () => Settings,
                 msg => { try { ThreadHelper.ThrowIfNotOnUIThread(); OutputWindow.Log(msg); } catch { } });
 
-            _trackerVm.FetchTaskFunc        = url => _taskFactory.FetchAsync(url);
-            _trackerVm.OpenSettingsAction   = OpenSettings;
-            _trackerVm.OpenHistoryAction    = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
-            _trackerVm.OpenLogFileAction    = OpenLogFile;
-            _trackerVm.OpenConfigFileAction = OpenConfigFile;
+            _trackerVm.FetchTaskFunc           = url => _taskFactory.FetchAsync(url);
+            _trackerVm.OpenSettingsAction      = OpenSettings;
+            _trackerVm.OpenHistoryAction       = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
+            _trackerVm.OpenLogFileAction       = OpenLogFile;
+            _trackerVm.OpenConfigFileAction    = OpenConfigFile;
             _trackerVm.OpenProjectHelperAction = () => JoinableTaskFactory.RunAsync(ShowProjectHelperWindowAsync);
 
             _trackerVm.LoadAllHistoryFunc = async () =>
@@ -148,9 +148,10 @@ namespace DhCodetaskExtension
                 catch (Exception ex) { OutputWindow.Log("[History] ❌ " + ex.Message); }
             };
 
-            // 10. ProjectHelperViewModel
+            // 10. ProjectHelperViewModel — v3.5: pass () => Settings for ripgrep config
             _projectHelperVm = new ProjectHelperViewModel(
                 _solutionFileService,
+                () => Settings,
                 msg => { try { ThreadHelper.ThrowIfNotOnUIThread(); OutputWindow.Log(msg); } catch { } });
 
             // 11. UI thread — commands
@@ -179,7 +180,7 @@ namespace DhCodetaskExtension
             }
             catch (Exception ex) { OutputWindow.Log("[Restore] " + ex.Message); }
 
-            OutputWindow.Log("[DevTaskTracker] v3.4 loaded. Settings: " + _storage.GetSettingsFilePath());
+            OutputWindow.Log("[DevTaskTracker] v3.5 loaded. Settings: " + _storage.GetSettingsFilePath());
             StatusBar.SetText("DevTask Tracker ready.");
         }
 

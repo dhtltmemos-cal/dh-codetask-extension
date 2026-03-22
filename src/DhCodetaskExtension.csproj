@@ -55,6 +55,7 @@
   <ItemGroup>
     <!-- Package entry point -->
     <Compile Include="Core\Models\SolutionFileEntry.cs" />
+    <Compile Include="Core\Models\RipgrepSearchResult.cs" />
     <Compile Include="Core\Services\ChecksumHelper.cs" />
     <Compile Include="Core\Services\SolutionFileService.cs" />
     <Compile Include="DevTaskTrackerPackage.cs" />

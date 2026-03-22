@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,6 +15,11 @@ namespace DhCodetaskExtension.Core.Services
     /// Scans a root directory for .sln and .csproj files, caches results with
     /// a configurable TTL, and provides filtering by name.
     /// Cache is stored at {storageRoot}\solution-file-cache.json.
+    ///
+    /// v3.5 optimizations:
+    /// - EnumerateFiles (lazy) instead of GetFiles (eager)
+    /// - Parallel.ForEach with ConcurrentBag for multi-core scan
+    /// - Persisted cache read/written atomically
     /// </summary>
     public sealed class SolutionFileService
     {
@@ -64,7 +70,18 @@ namespace DhCodetaskExtension.Core.Services
         {
             if (_cache == null) return true;
             var ttl = _settings().SolutionFileCacheMinutes;
+            if (ttl <= 0) ttl = 20;
             return (DateTime.UtcNow - _cacheTime).TotalMinutes >= ttl;
+        }
+
+        /// <summary>Returns cache age in human-readable format, or null if no cache.</summary>
+        public string GetCacheAgeDisplay()
+        {
+            if (_cache == null) return null;
+            var age = DateTime.UtcNow - _cacheTime;
+            if (age.TotalSeconds < 60) return string.Format("{0}s", (int)age.TotalSeconds);
+            if (age.TotalMinutes < 60) return string.Format("{0}m {1}s", (int)age.TotalMinutes, age.Seconds);
+            return string.Format("{0}h {1}m", (int)age.TotalHours, age.Minutes);
         }
 
         // ── Private ───────────────────────────────────────────────────────
@@ -87,6 +104,7 @@ namespace DhCodetaskExtension.Core.Services
                     if (persisted != null)
                     {
                         var ttl = _settings().SolutionFileCacheMinutes;
+                        if (ttl <= 0) ttl = 20;
                         if ((DateTime.UtcNow - persisted.SavedAt).TotalMinutes < ttl)
                         {
                             _cache     = persisted.Entries ?? new List<SolutionFileEntry>();
@@ -98,7 +116,7 @@ namespace DhCodetaskExtension.Core.Services
                 catch { /* corrupt cache — re-scan */ }
             }
 
-            // 2. Re-scan
+            // 2. Re-scan with parallel processing
             var root = _settings().DirectoryRootDhHosCodePath;
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
             {
@@ -107,11 +125,11 @@ namespace DhCodetaskExtension.Core.Services
                 return;
             }
 
-            var found = await Task.Run(() => ScanDirectory(root));
+            var found = await Task.Run(() => ScanDirectoryParallel(root));
             _cache     = found.OrderBy(f => f.FileName, StringComparer.OrdinalIgnoreCase).ToList();
             _cacheTime = DateTime.UtcNow;
 
-            // 3. Persist to disk
+            // 3. Persist to disk atomically
             try
             {
                 var persisted = new PersistedCache { SavedAt = _cacheTime, Entries = _cache };
@@ -123,19 +141,26 @@ namespace DhCodetaskExtension.Core.Services
             catch { /* non-critical */ }
         }
 
-        private static List<SolutionFileEntry> ScanDirectory(string root)
+        /// <summary>
+        /// Parallel scan using ConcurrentBag + Parallel.ForEach.
+        /// Uses Directory.EnumerateFiles (lazy) to start processing early.
+        /// </summary>
+        private static List<SolutionFileEntry> ScanDirectoryParallel(string root)
         {
-            var result = new List<SolutionFileEntry>();
+            var bag = new ConcurrentBag<SolutionFileEntry>();
             try
             {
-                var files = Directory.GetFiles(root, "*.*", SearchOption.AllDirectories)
+                // EnumerateFiles is lazy — starts yielding immediately
+                var files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
                     .Where(f =>
                     {
-                        var ext = Path.GetExtension(f).ToLower();
-                        return ext == ".sln" || ext == ".csproj";
+                        var ext = Path.GetExtension(f);
+                        return string.Equals(ext, ".sln",    StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(ext, ".csproj", StringComparison.OrdinalIgnoreCase);
                     });
 
-                foreach (var f in files)
+                // Parallel.ForEach uses thread pool — much faster on large trees
+                System.Threading.Tasks.Parallel.ForEach(files, f =>
                 {
                     try
                     {
@@ -144,7 +169,7 @@ namespace DhCodetaskExtension.Core.Services
                                                                    Path.AltDirectorySeparatorChar)
                             : f;
 
-                        result.Add(new SolutionFileEntry
+                        bag.Add(new SolutionFileEntry
                         {
                             FileName     = Path.GetFileName(f),
                             FullPath     = f,
@@ -154,10 +179,10 @@ namespace DhCodetaskExtension.Core.Services
                         });
                     }
                     catch { /* skip inaccessible */ }
-                }
+                });
             }
             catch { /* non-critical */ }
-            return result;
+            return bag.ToList();
         }
 
         private sealed class PersistedCache

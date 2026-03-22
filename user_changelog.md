@@ -1,3 +1,29 @@
+## 2026-03-22 15:30 — Task task-2026-03-22-02.md
+
+**Yêu cầu:** Cache file .sln/.csproj hoạt động chưa; tối ưu load chậm; thêm tìm kiếm nội dung bằng ripgrep.
+
+**Triển khai:**
+
+**Cache verification:** `SolutionFileService` đã có cache TTL đúng theo `SolutionFileCacheMinutes` (default 20). Bổ sung `GetCacheAgeDisplay()` để status bar hiển thị tuổi cache ("5m 20s trước").
+
+**Tối ưu scan:** Đổi từ `Directory.GetFiles` (eager, allocates toàn bộ danh sách trước) sang `Directory.EnumerateFiles` (lazy) + `Parallel.ForEach` với `ConcurrentBag<SolutionFileEntry>` — tận dụng đa nhân CPU, giảm thời gian scan đáng kể trên thư mục lớn.
+
+**Ripgrep content search:**
+- `AppSettings`: thêm field `RipgrepPath` (path tới `rg.exe`)  
+- `Core/Models/RipgrepSearchResult.cs`: model mới cho một dòng kết quả tìm kiếm
+- `ProjectHelperViewModel`: constructor nhận thêm `Func<AppSettings>`, thêm `ContentQuery`, `SearchResults`, `IsSearching`, `SearchStatus`; commands `SearchContentCommand` / `CancelSearchCommand` / `ClearSearchCommand`; hàm `RunRipgrep()` chạy `rg --json --line-number --max-count 500`, parse JSON output, hỗ trợ `CancellationToken` để hủy search real-time
+- `ProjectHelperControl.xaml`: thêm Expander "🔍 Tìm kiếm nội dung (ripgrep)" ở cuối panel — input regex + Enter/button Tìm, nút Hủy khi đang search, nút ✕ xóa kết quả, danh sách kết quả hiển thị file:dòng + content với nút 📂 Mở / 📋 Copy
+- `DevTaskTrackerPackage.cs`: truyền `() => Settings` vào `ProjectHelperViewModel` constructor
+
+**Cấu hình ripgrep trong settings.json:**
+```json
+{
+  "RipgrepPath": "C:\\tools\\rg.exe"
+}
+```
+
+**Version bump:** 3.4 → 3.5
+
 ## 2026-03-22 14:00 — Task task-2026-03-22-01.md
 
 **Yêu cầu:** Tách nghiệp vụ list file .sln/.csproj ra khỏi Tracker panel, tạo panel chuyên biệt `Project Helper`.
@@ -58,53 +84,18 @@
 
 **Yêu cầu:** Đổi tên toàn bộ project từ `VS2017ExtensionTemplate` sang `dh-codetask-extension`.
 
-- Đổi tên namespace, assembly, class, file, GUID string display
-- Cập nhật tất cả references bên trong code
-- Tạo zip theo quy tắc versioning
-
 ## 2026-03-21 11:00 — Thêm top-level menu "DH Codetask Extension"
 
 **Yêu cầu:** Bổ sung menu cha là "DH Codetask Extension" trên menu bar Visual Studio, với menu con "Settings" và "Settings (JSON)".
 
 ## 2026-03-21 14:00 — Triển khai DevTaskTracker v3.0
 
-**Yêu cầu:** Đọc docs/Instructions.md, docs/error-skill-devtasktracker.md, docs/rule.md và triển khai toàn bộ theo Instructions.md — DevTaskTracker v3.0 với:
-
-- Fetch task từ Gitea (Provider Pattern)
-- Time tracking cấp task và TODO item độc lập
-- Completion Report JSON + Markdown (immutable, atomic write)
-- History Browser (ngày/tuần/tháng, phân trang, export CSV)
-- EventBus non-blocking, WebhookNotificationProvider
-- Settings dialog 12 trường
-- Restore task dở khi khởi động lại VS
+**Yêu cầu:** Đọc docs/Instructions.md, docs/error-skill-devtasktracker.md, docs/rule.md và triển khai toàn bộ theo Instructions.md — DevTaskTracker v3.0.
 
 ## 2026-03-21 17:00 — Task task-2026-03-21-00.md
 
-**Yêu cầu:** Triển khai 3 yêu cầu từ `docs/tasks/task-2026-03-21-00.md`:
-
-1. **Loại bỏ menu Setting (form), chỉ giữ lại Settings (JSON)**
-2. **Log mọi thao tác user ra Output Window**
-3. **Bổ sung nút và menu mở file log / file cấu hình**
+**Yêu cầu:** Loại bỏ menu Setting (form), chỉ giữ lại Settings (JSON); Log mọi thao tác user ra Output Window; Bổ sung nút và menu mở file log / file cấu hình.
 
 ## 2026-03-21 20:00 — Task task-2026-03-21-01.md
 
-**Yêu cầu:** Triển khai 4 yêu cầu từ `docs/tasks/task-2026-03-21-01.md`:
-
-1. **Chỉnh lỗi Filter_Week NullReferenceException**
-   - Lỗi: `Object reference not set to an instance of an object` tại `HistoryControl.xaml.cs` Filter_Week
-   - Nguyên nhân: RadioButton `IsChecked="True"` bắn event `Checked` trong `InitializeComponent()` trước khi `CustomRangePanel` được gán
-   - Fix: thêm flag `_isInitialized`, tất cả Filter\_\* handlers kiểm tra flag trước khi xử lý
-
-2. **Resume task từ lịch sử**
-   - Nút "▶ Resume" trong mỗi row của History panel
-   - Click → load task vào Tracker panel, timer ở trạng thái Paused sẵn sàng Resume
-   - Package wire `ResumeFromHistoryAction` → `BuildWorkLogFromReport()` → `RestoreFromLogAsync()`
-
-3. **Open URL trong cả 2 panel**
-   - Tracker: nút "🔗" trong URL bar → `Process.Start(url)`
-   - History: nút "🔗 URL" mỗi row → `Process.Start(url)`
-   - ReportDetailDialog: nút "🔗 URL" trong action row
-
-4. **Dialogs on top**
-   - `AppSettingsJsonDialog.xaml`: `Topmost="True"`
-   - `ReportDetailDialog.xaml`: `Topmost="True"`
+**Yêu cầu:** Chỉnh lỗi Filter_Week; Thêm Resume task từ lịch sử; Open URL trong cả 2 panel; Dialogs Topmost.

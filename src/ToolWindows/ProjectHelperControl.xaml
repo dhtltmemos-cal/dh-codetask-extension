@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:DhCodetaskExtension.ToolWindows"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="420">
+             mc:Ignorable="d" d:DesignHeight="800" d:DesignWidth="420">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
@@ -48,15 +48,16 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>  <!-- Header -->
+            <RowDefinition Height="Auto"/>  <!-- Type Filter -->
+            <RowDefinition Height="Auto"/>  <!-- Sort Bar -->
+            <RowDefinition Height="Auto"/>  <!-- Search Bar (file name) -->
+            <RowDefinition Height="*"/>     <!-- File List -->
+            <RowDefinition Height="Auto"/>  <!-- Content Search (ripgrep) -->
+            <RowDefinition Height="Auto"/>  <!-- Status Bar -->
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- ── Header ─────────────────────────────────────────────────── -->
         <Border Grid.Row="0" Background="#007ACC" Padding="10,8">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="🔄" Width="28" Height="26" FontSize="13"
@@ -67,7 +68,7 @@
             </DockPanel>
         </Border>
 
-        <!-- Type Filter -->
+        <!-- ── Type Filter ───────────────────────────────────────────── -->
         <Border Grid.Row="1" BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="8,6">
             <StackPanel>
                 <TextBlock Text="Loại file:" FontSize="10" Foreground="#888" Margin="0,0,0,4"/>
@@ -82,7 +83,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Sort Bar -->
+        <!-- ── Sort Bar ──────────────────────────────────────────────── -->
         <Border Grid.Row="2" BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="8,6">
             <StackPanel>
                 <TextBlock Text="Sắp xếp:" FontSize="10" Foreground="#888" Margin="0,0,0,4"/>
@@ -99,11 +100,11 @@
             </StackPanel>
         </Border>
 
-        <!-- Search Bar -->
+        <!-- ── File Name Search Bar ──────────────────────────────────── -->
         <Border Grid.Row="3" Padding="8,5" BorderBrush="#EEE" BorderThickness="0,0,0,1">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="✕" Width="26" Height="26" FontSize="11"
-                        Command="{Binding ClearFilterCommand}" ToolTip="Xóa bộ lọc" Margin="4,0,0,0"/>
+                        Command="{Binding ClearFilterCommand}" ToolTip="Xóa bộ lọc tên file" Margin="4,0,0,0"/>
                 <TextBlock DockPanel.Dock="Left" Text="🔍" VerticalAlignment="Center"
                            Margin="0,0,6,0" FontSize="12"/>
                 <TextBox Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}"
@@ -112,10 +113,10 @@
             </DockPanel>
         </Border>
 
-        <!-- File List -->
+        <!-- ── File List ─────────────────────────────────────────────── -->
         <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Loading -->
+                <!-- Loading spinner -->
                 <Border Visibility="{Binding IsLoading, Converter={StaticResource BoolVis}}"
                         Padding="12,10">
                     <StackPanel Orientation="Horizontal">
@@ -124,7 +125,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Items -->
                 <ItemsControl ItemsSource="{Binding Files}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -172,7 +172,7 @@
                                         </TextBlock>
                                     </StackPanel>
 
-                                    <!-- Buttons -->
+                                    <!-- Action Buttons -->
                                     <StackPanel Grid.Column="2" Orientation="Vertical"
                                                 VerticalAlignment="Center" Margin="6,0,0,0">
                                         <Button Content="📂 Mở VS" Style="{StaticResource ActionBtn}"
@@ -215,8 +215,111 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Status Bar -->
-        <Border Grid.Row="5" Background="#F5F5F5" BorderBrush="#DDD"
+        <!-- ── Content Search (ripgrep) ──────────────────────────────── -->
+        <Expander Grid.Row="5" Header="🔍 Tìm kiếm nội dung (ripgrep)"
+                  FontSize="11" FontWeight="SemiBold"
+                  Background="#F8F8F8" BorderBrush="#DDD" BorderThickness="0,1,0,0"
+                  Padding="0,4,0,0">
+            <StackPanel Margin="8,6,8,8">
+                <!-- Search input row -->
+                <DockPanel Margin="0,0,0,4">
+                    <Button DockPanel.Dock="Right" Content="✕" Width="24" Height="26"
+                            FontSize="10" Margin="3,0,0,0"
+                            Command="{Binding ClearSearchCommand}"
+                            ToolTip="Xóa kết quả tìm kiếm"/>
+                    <Button DockPanel.Dock="Right" Content="⏸ Hủy" Height="26" Padding="6,0"
+                            FontSize="10" Margin="3,0,0,0"
+                            Command="{Binding CancelSearchCommand}"
+                            Visibility="{Binding IsSearching, Converter={StaticResource BoolVis}}"
+                            ToolTip="Hủy tìm kiếm"/>
+                    <Button DockPanel.Dock="Right" Content="🔍 Tìm" Height="26" Padding="8,0"
+                            FontSize="10" FontWeight="SemiBold" Margin="3,0,0,0"
+                            Command="{Binding SearchContentCommand}"
+                            ToolTip="Tìm nội dung bằng ripgrep (regex)"/>
+                    <TextBox Text="{Binding ContentQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Height="26" FontSize="11" Padding="4,2" VerticalContentAlignment="Center"
+                             ToolTip="Nhập pattern (regex) để tìm kiếm trong tất cả file">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchContentCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </DockPanel>
+
+                <!-- Search status -->
+                <TextBlock Text="{Binding SearchStatus, Mode=OneWay}" FontSize="10"
+                           Foreground="#555" Margin="0,0,0,4" TextWrapping="Wrap"/>
+
+                <!-- Search results -->
+                <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding SearchResults}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="4,4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#F0F7FF"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Cursor="Hand">
+                                            <TextBlock FontSize="10" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding FilePath}">
+                                                <Run Text="{Binding FileName, Mode=OneWay}" Foreground="#007ACC"/>
+                                                <Run Text=":" Foreground="#888"/>
+                                                <Run Text="{Binding LineNumber, Mode=OneWay}" Foreground="#E65100"/>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding LineText, Mode=OneWay}"
+                                                       FontSize="10" FontFamily="Consolas"
+                                                       Foreground="#333" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding LineText}"/>
+                                            <TextBlock Text="{Binding FolderHint, Mode=OneWay}"
+                                                       FontSize="9" Foreground="#AAA"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <Button Content="📂" Width="22" Height="22" FontSize="10"
+                                                    Tag="{Binding}" Click="BtnOpenSearchResult_Click"
+                                                    ToolTip="Mở file" Margin="2,0,0,0"/>
+                                            <Button Content="📋" Width="22" Height="22" FontSize="10"
+                                                    Tag="{Binding}" Click="BtnCopySearchPath_Click"
+                                                    ToolTip="Copy đường dẫn:dòng" Margin="2,0,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Hint when no results and no search done -->
+                <TextBlock FontSize="10" Foreground="#AAA" TextWrapping="Wrap"
+                           Text="Nhập pattern (hỗ trợ regex) và nhấn 🔍 Tìm hoặc Enter. Yêu cầu cấu hình RipgrepPath trong Settings (JSON).">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SearchResults.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Expander>
+
+        <!-- ── Status Bar ────────────────────────────────────────────── -->
+        <Border Grid.Row="6" Background="#F5F5F5" BorderBrush="#DDD"
                 BorderThickness="0,1,0,0" Padding="8,4">
             <TextBlock Text="{Binding StatusMessage, Mode=OneWay}"
                        FontSize="10" Foreground="#666" TextTrimming="CharacterEllipsis"/>

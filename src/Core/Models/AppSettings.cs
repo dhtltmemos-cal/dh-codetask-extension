@@ -33,6 +33,14 @@ namespace DhCodetaskExtension.Core.Models
         /// <summary>Cache expiry for solution file list (minutes). Default 20.</summary>
         public int SolutionFileCacheMinutes { get; set; } = 20;
 
+        // ── Ripgrep (v3.5) ───────────────────────────────────────────────
+        /// <summary>
+        /// Full path to ripgrep executable (rg.exe on Windows).
+        /// Example: "C:\\tools\\rg.exe"
+        /// Used for fast content search in Project Helper panel.
+        /// </summary>
+        public string RipgrepPath { get; set; } = string.Empty;
+
         // ── Task Pause Reasons (v3.3) ────────────────────────────────────
         /// <summary>Predefined pause reasons shown in the pause dialog.</summary>
         public List<string> TaskPauseReasons { get; set; } = new List<string>
