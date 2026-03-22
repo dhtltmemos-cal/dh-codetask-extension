@@ -1,1 +1,10 @@
-Bổ sung task: docs\tasks\task-2026-03-22-00.md
+feat(v3.3): solution file browser + checksum integrity + URL dedup + timer redesign + todo redesign + todo templates
+
+- Solution file panel: scan .sln/.csproj in DirectoryRootDhHosCodePath with TTL cache
+- Report checksum: SHA-256 stored in JSON, verified on load, shown in History panel
+- URL duplicate check: fetch from history if URL already exists (ignores #anchor)
+- Task timer redesign: Bắt đầu (start/resume) + Tạm ngưng (pause with reason dialog)
+- TODO redesign: Bắt đầu / Tạm ngưng / Kết thúc with session time accumulation
+- TODO templates: quick-add list from settings TaskPauseReasons + TodoTemplates fields
+
+Ref: task-2026-03-22-00

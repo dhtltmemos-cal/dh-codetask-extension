@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" d:DesignHeight="980" d:DesignWidth="340">
+             xmlns:local="clr-namespace:DhCodetaskExtension.ToolWindows"
+             mc:Ignorable="d" d:DesignHeight="1100" d:DesignWidth="340">
 
     <UserControl.Resources>
         <Style x:Key="SectionLabel" TargetType="TextBlock">
@@ -17,11 +18,11 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Margin" Value="0,0,4,0"/>
         </Style>
-        <Style x:Key="TimerBtn" TargetType="Button">
-            <Setter Property="Width" Value="70"/>
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
+        <Style x:Key="BigBtn" TargetType="Button">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
         </Style>
         <Style x:Key="UtilBtn" TargetType="Button">
             <Setter Property="Height" Value="24"/>
@@ -47,7 +48,6 @@
                         Command="{Binding ClearCommand}" Width="50" Margin="4,0,0,0"/>
                 <Button DockPanel.Dock="Right" Content="Fetch" Style="{StaticResource ActionBtn}"
                         Command="{Binding FetchCommand}" Width="55"/>
-                <!-- Open URL in browser -->
                 <Button DockPanel.Dock="Right" Content="🔗" Width="28" Height="26" FontSize="13"
                         x:Name="BtnOpenUrl" Click="BtnOpenUrl_Click"
                         ToolTip="Mở URL trong browser mặc định" Margin="4,0,0,0"/>
@@ -67,7 +67,7 @@
                      Height="50" FontSize="11" Padding="4" AcceptsReturn="True"
                      TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-            <!-- ── Task Timer ────────────────────────────────────────── -->
+            <!-- ── Task Timer (simplified: Bắt đầu / Tạm ngưng) ──── -->
             <TextBlock Text="── ⏱ Task Timer ──" Style="{StaticResource SectionLabel}"/>
             <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="8">
                 <StackPanel>
@@ -77,11 +77,15 @@
                         <TextBlock Text="{Binding TimerDisplay, Mode=OneWay}" FontSize="22"
                                    FontFamily="Consolas" FontWeight="Bold" Foreground="#007ACC"/>
                     </DockPanel>
-                    <WrapPanel Margin="0,6,0,0">
-                        <Button Content="▶ Start"  Style="{StaticResource TimerBtn}" Command="{Binding StartCommand}"/>
-                        <Button Content="⏸ Pause"  Style="{StaticResource TimerBtn}" Command="{Binding PauseCommand}"/>
-                        <Button Content="▶ Resume" Style="{StaticResource TimerBtn}" Command="{Binding ResumeCommand}"/>
-                        <Button Content="⏹ Stop"   Style="{StaticResource TimerBtn}" Command="{Binding StopCommand}"/>
+                    <WrapPanel Margin="0,8,0,0">
+                        <!-- Bắt đầu: maps to StartCommand (handles both Idle and Paused) -->
+                        <Button Content="▶ Bắt đầu" Style="{StaticResource BigBtn}"
+                                Padding="14,0" Command="{Binding StartCommand}"
+                                ToolTip="Bắt đầu hoặc tiếp tục tính giờ"/>
+                        <!-- Tạm ngưng: shows pause reason dialog -->
+                        <Button Content="⏸ Tạm ngưng" Style="{StaticResource BigBtn}"
+                                Padding="14,0" Command="{Binding PauseCommand}"
+                                ToolTip="Tạm ngưng và ghi nhận lý do"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>
@@ -94,6 +98,31 @@
 
             <!-- ── TODO List ──────────────────────────────────────────── -->
             <TextBlock Text="── ✅ TODO List ──" Style="{StaticResource SectionLabel}"/>
+
+            <!-- Quick add from template -->
+            <Expander Header="📋 Chọn nhanh từ mẫu" FontSize="10" Margin="0,0,0,4"
+                      Visibility="{Binding TodoTemplates.Count, Converter={StaticResource BoolVis}}">
+                <WrapPanel Margin="0,4,0,0">
+                    <ItemsControl ItemsSource="{Binding TodoTemplates}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding}" FontSize="10" Height="22" Padding="6,0"
+                                        Margin="0,0,4,4"
+                                        Command="{Binding DataContext.AddTodoFromTemplateCommand,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </WrapPanel>
+            </Expander>
+
+            <!-- New TODO input -->
             <DockPanel Margin="0,0,0,4">
                 <Button DockPanel.Dock="Right" Content="Add" Width="45" Height="26"
                         FontSize="11" Command="{Binding AddTodoCommand}" Margin="4,0,0,0"/>
@@ -108,26 +137,39 @@
             <ItemsControl ItemsSource="{Binding Todos, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="0,4">
+                        <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="0,5">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding Text, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Text, Mode=OneWay}" FontSize="11"
+                                               TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                        <Setter Property="Foreground" Value="#888"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <TextBlock Text="{Binding ElapsedDisplay, Mode=OneWay}" FontSize="10"
                                                Foreground="#007ACC" FontFamily="Consolas"/>
                                 </StackPanel>
+                                <!-- Task con buttons: Bắt đầu / Tạm ngưng / Kết thúc / Xóa -->
                                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <Button Content="▶" Width="22" Height="22" FontSize="10" Margin="1"
-                                            Command="{Binding StartCommand}"/>
-                                    <Button Content="⏸" Width="22" Height="22" FontSize="10" Margin="1"
-                                            Command="{Binding PauseCommand}"/>
-                                    <Button Content="✓" Width="22" Height="22" FontSize="10" Margin="1"
-                                            Command="{Binding CompleteCommand}"/>
-                                    <Button Content="🗑" Width="22" Height="22" FontSize="10" Margin="1"
-                                            Command="{Binding DeleteCommand}"/>
+                                    <Button Content="▶" Width="24" Height="24" FontSize="10" Margin="1"
+                                            Command="{Binding StartCommand}" ToolTip="Bắt đầu"/>
+                                    <Button Content="⏸" Width="24" Height="24" FontSize="10" Margin="1"
+                                            Command="{Binding PauseCommand}" ToolTip="Tạm ngưng"/>
+                                    <Button Content="✓" Width="24" Height="24" FontSize="10" Margin="1"
+                                            Command="{Binding StopCommand}" ToolTip="Kết thúc"/>
+                                    <Button Content="🗑" Width="24" Height="24" FontSize="10" Margin="1"
+                                            Command="{Binding DeleteCommand}" ToolTip="Xóa"/>
                                 </WrapPanel>
                             </Grid>
                         </Border>
@@ -137,14 +179,10 @@
 
             <!-- TODO summary -->
             <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="#555">
-                <Run Text="Tổng: "/>
-                <Run Text="{Binding TodoTotal, Mode=OneWay}"/>
-                <Run Text=" | Xong: "/>
-                <Run Text="{Binding TodoDone, Mode=OneWay}"/>
-                <Run Text=" | Đang: "/>
-                <Run Text="{Binding TodoRunning, Mode=OneWay}"/>
-                <Run Text=" | Tổng giờ: "/>
-                <Run Text="{Binding TodoTotalElapsed, Mode=OneWay}"/>
+                <Run Text="Tổng: "/><Run Text="{Binding TodoTotal, Mode=OneWay}"/>
+                <Run Text=" | Xong: "/><Run Text="{Binding TodoDone, Mode=OneWay}"/>
+                <Run Text=" | Đang: "/><Run Text="{Binding TodoRunning, Mode=OneWay}"/>
+                <Run Text=" | Tổng giờ: "/><Run Text="{Binding TodoTotalElapsed, Mode=OneWay}"/>
             </TextBlock>
 
             <!-- ── Business Logic ────────────────────────────────────── -->
@@ -165,41 +203,103 @@
 
             <!-- ── Actions ───────────────────────────────────────────── -->
             <Separator Margin="0,10,0,6"/>
-
-            <!-- Primary actions -->
             <WrapPanel>
                 <Button Content="🚀 Push &amp; Complete" Height="32" FontSize="11" FontWeight="SemiBold"
-                        Padding="10,0" Margin="0,0,4,4" Command="{Binding PushAndCompleteCommand}"
-                        ToolTip="Commit, push Git và hoàn thành task"/>
+                        Padding="10,0" Margin="0,0,4,4" Command="{Binding PushAndCompleteCommand}"/>
                 <Button Content="⏸ Save &amp; Pause" Height="32" FontSize="11"
-                        Padding="10,0" Margin="0,0,4,4" Command="{Binding SaveAndPauseCommand}"
-                        ToolTip="Lưu trạng thái, không push git"/>
+                        Padding="10,0" Margin="0,0,4,4" Command="{Binding SaveAndPauseCommand}"/>
             </WrapPanel>
-
-            <!-- Navigation + Settings -->
             <WrapPanel Margin="0,2,0,0">
                 <Button Content="📚 Xem Lịch sử" Style="{StaticResource ActionBtn}"
                         x:Name="BtnHistory" Click="BtnHistory_Click"/>
                 <Button Content="⚙ Settings (JSON)" Style="{StaticResource ActionBtn}"
-                        x:Name="BtnSettings" Click="BtnSettings_Click"
-                        ToolTip="Chỉnh sửa cấu hình JSON (nguồn duy nhất)"/>
+                        x:Name="BtnSettings" Click="BtnSettings_Click"/>
             </WrapPanel>
-
-            <!-- Utility row: Open Log / Open Config -->
             <Border BorderBrush="#EEE" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,6,0,0">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Left" Text="🛠" VerticalAlignment="Center"
-                               Margin="0,0,6,0" FontSize="11" Foreground="#888"/>
-                    <WrapPanel>
-                        <Button Content="📄 Open Log" Style="{StaticResource UtilBtn}"
-                                x:Name="BtnOpenLog" Click="BtnOpenLog_Click"
-                                ToolTip="Mở file log hôm nay"/>
-                        <Button Content="📋 Open Config" Style="{StaticResource UtilBtn}"
-                                x:Name="BtnOpenConfig" Click="BtnOpenConfig_Click"
-                                ToolTip="Mở settings.json trong editor ngoài"/>
-                    </WrapPanel>
-                </DockPanel>
+                <WrapPanel>
+                    <Button Content="📄 Open Log" Style="{StaticResource UtilBtn}"
+                            x:Name="BtnOpenLog" Click="BtnOpenLog_Click"/>
+                    <Button Content="📋 Open Config" Style="{StaticResource UtilBtn}"
+                            x:Name="BtnOpenConfig" Click="BtnOpenConfig_Click"/>
+                </WrapPanel>
             </Border>
+
+            <!-- ── Solution Files Panel ──────────────────────────────── -->
+            <Expander x:Name="SolutionExpander" Header="── 📁 Solution / Project Files ──"
+                      FontSize="11" Foreground="#555" Margin="0,10,0,0" IsExpanded="False"
+                      Expanded="SolutionExpander_Expanded">
+                <StackPanel>
+                    <!-- Search + Refresh -->
+                    <DockPanel Margin="0,6,0,4">
+                        <Button DockPanel.Dock="Right" Content="🔄" Width="28" Height="26"
+                                FontSize="12" Margin="4,0,0,0"
+                                Command="{Binding RefreshSolutionFilesCommand}"
+                                ToolTip="Quét lại danh sách file"/>
+                        <TextBox Text="{Binding SolutionFilterKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="26" FontSize="11" Padding="4,2" VerticalContentAlignment="Center"
+                                 ToolTip="Tìm theo tên file hoặc đường dẫn"/>
+                    </DockPanel>
+
+                    <TextBlock Text="⏳ Đang quét..." FontSize="11" Foreground="#888"
+                               Visibility="{Binding SolutionIsLoading, Converter={StaticResource BoolVis}}"
+                               Margin="0,4,0,4"/>
+
+                    <!-- File list -->
+                    <Border BorderBrush="#DDD" BorderThickness="1" MaxHeight="200">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SolutionFiles}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#EEE" BorderThickness="0,0,0,1"
+                                                Padding="6,4" Cursor="Hand"
+                                                MouseLeftButtonUp="SolutionFile_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Icon -->
+                                                <TextBlock Grid.Column="0" FontSize="11" Margin="0,0,6,0"
+                                                           Text="{Binding Extension,
+                                                                  Converter={x:Static local:SolutionExtIconConverter.Instance}}"
+                                                           Foreground="#007ACC"/>
+                                                <!-- Name + path -->
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding DisplayName}" FontSize="11"
+                                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding FolderHint}" FontSize="9"
+                                                               Foreground="#888" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <!-- Copy button -->
+                                                <Button Grid.Column="2" Content="📋" Width="22" Height="22"
+                                                        FontSize="10" Margin="4,0,0,0"
+                                                        Tag="{Binding FullPath}"
+                                                        Click="SolutionFileCopy_Click"
+                                                        ToolTip="Copy đường dẫn"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <TextBlock FontSize="10" Foreground="#888" Margin="0,4,0,0"
+                               Text="💡 Click để mở — 📋 để copy path. Cấu hình DirectoryRootDhHosCodePath trong Settings.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SolutionIsLoading}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Expander>
 
         </StackPanel>
     </ScrollViewer>

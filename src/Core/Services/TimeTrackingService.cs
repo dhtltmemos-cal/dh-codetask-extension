@@ -12,12 +12,12 @@ namespace DhCodetaskExtension.Core.Services
     /// </summary>
     public sealed class TimeTrackingService
     {
-        private TrackingState _state = TrackingState.Idle;
+        private TrackingState  _state = TrackingState.Idle;
         private readonly List<TimeSession> _sessions = new List<TimeSession>();
-        private TimeSession _currentSession;
+        private TimeSession    _currentSession;
 
-        public TrackingState State => _state;
-        public DateTime? StartedAt { get; private set; }
+        public TrackingState State     => _state;
+        public DateTime?     StartedAt { get; private set; }
 
         public TimeSpan GetElapsed()
         {
@@ -31,28 +31,29 @@ namespace DhCodetaskExtension.Core.Services
         public void Start()
         {
             if (_state != TrackingState.Idle) return;
-            _state = TrackingState.Running;
+            _state    = TrackingState.Running;
             StartedAt = DateTime.Now;
             _currentSession = new TimeSession { StartTime = DateTime.UtcNow };
         }
 
-        public void Pause()
+        /// <param name="pauseReason">Optional reason recorded in the session.</param>
+        public void Pause(string pauseReason = null)
         {
             if (_state != TrackingState.Running) return;
-            FinalizeCurrentSession();
+            FinalizeCurrentSession(pauseReason);
             _state = TrackingState.Paused;
         }
 
         public void Resume()
         {
             if (_state != TrackingState.Paused) return;
-            _state = TrackingState.Running;
+            _state          = TrackingState.Running;
             _currentSession = new TimeSession { StartTime = DateTime.UtcNow };
         }
 
         public List<TimeSession> Stop()
         {
-            if (_state == TrackingState.Running) FinalizeCurrentSession();
+            if (_state == TrackingState.Running) FinalizeCurrentSession(null);
             _state = TrackingState.Completed;
             return new List<TimeSession>(_sessions);
         }
@@ -61,7 +62,7 @@ namespace DhCodetaskExtension.Core.Services
         {
             _sessions.Clear();
             _currentSession = null;
-            _state = TrackingState.Idle;
+            _state   = TrackingState.Idle;
             StartedAt = null;
         }
 
@@ -75,10 +76,11 @@ namespace DhCodetaskExtension.Core.Services
 
         public List<TimeSession> GetSessions() => new List<TimeSession>(_sessions);
 
-        private void FinalizeCurrentSession()
+        private void FinalizeCurrentSession(string pauseReason)
         {
             if (_currentSession == null) return;
-            _currentSession.EndTime = DateTime.UtcNow;
+            _currentSession.EndTime     = DateTime.UtcNow;
+            _currentSession.PauseReason = pauseReason ?? string.Empty;
             _sessions.Add(_currentSession);
             _currentSession = null;
         }

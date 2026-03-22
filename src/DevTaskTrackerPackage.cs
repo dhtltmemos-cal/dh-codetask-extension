@@ -26,7 +26,7 @@ namespace DhCodetaskExtension
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration(
         "DH Codetask Extension",
-        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.2")]
+        "DevTask Tracker — Gitea, Time Tracking, TODO, Reports.", "3.3")]
     [ProvideToolWindow(typeof(TrackerToolWindow),
         Style = VsDockStyle.Tabbed, DockedWidth = 360,
         Window = "DocumentWell", Orientation = ToolWindowOrientation.Left)]
@@ -45,14 +45,15 @@ namespace DhCodetaskExtension
         public AppSettings         Settings     { get; set; }
 
         // ── Singletons ────────────────────────────────────────────────────
-        private EventBus                  _eventBus;
-        private JsonStorageService        _storage;
-        private HistoryQueryService       _historyRepo;
-        private GitService                _gitService;
-        private TaskProviderFactory       _taskFactory;
-        private CompositeReportGenerator  _reportGen;
+        private EventBus                    _eventBus;
+        private JsonStorageService          _storage;
+        private HistoryQueryService         _historyRepo;
+        private GitService                  _gitService;
+        private TaskProviderFactory         _taskFactory;
+        private CompositeReportGenerator    _reportGen;
         private WebhookNotificationProvider _webhook;
-        private TimeTrackingService       _taskTimer;
+        private TimeTrackingService         _taskTimer;
+        private SolutionFileService         _solutionFileService;
 
         private TrackerViewModel _trackerVm;
         private HistoryViewModel _historyVm;
@@ -71,9 +72,8 @@ namespace DhCodetaskExtension
             _storage  = new JsonStorageService(GetStorageRoot);
             Settings  = await _storage.LoadSettingsAsync();
 
-            // Init AppLogger with OutputWindow
             AppLogger.Instance.Init(OutputWindow);
-            AppLogger.Instance.Info("DevTaskTracker v3.2 initializing...");
+            AppLogger.Instance.Info("DevTaskTracker v3.3 initializing...");
 
             // 3. Core services
             _eventBus    = new EventBus();
@@ -82,39 +82,51 @@ namespace DhCodetaskExtension
             _gitService  = new GitService(() => Settings);
             _taskTimer   = new TimeTrackingService();
 
-            // 4. Task providers
+            // 4. Solution file service (v3.3)
+            _solutionFileService = new SolutionFileService(() => Settings, GetStorageRoot);
+
+            // 5. Task providers
             _taskFactory = new TaskProviderFactory();
             _taskFactory.Register(new ManualTaskProvider());
             _taskFactory.Register(new GiteaTaskProvider(() => Settings));
 
-            // 5. Report generators
+            // 6. Report generators
             _reportGen = new CompositeReportGenerator();
             _reportGen.Register(new JsonReportGenerator());
             _reportGen.Register(new MarkdownReportGenerator());
 
-            // 6. Webhook
+            // 7. Webhook
             _webhook = new WebhookNotificationProvider(() => Settings);
             _eventBus.Subscribe<TaskCompletedEvent>(e => _webhook.OnEvent(e));
 
-            // 7. ViewModels
+            // 8. ViewModels
             _trackerVm = new TrackerViewModel(
                 _eventBus, _storage, _gitService, _reportGen, _taskTimer,
-                () => Settings, msg => OutputWindow.Log(msg));
-            _trackerVm.FetchTaskFunc       = url => _taskFactory.FetchAsync(url);
-            _trackerVm.OpenSettingsAction  = OpenSettings;
-            _trackerVm.OpenHistoryAction   = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
-            _trackerVm.OpenLogFileAction   = OpenLogFile;
-            _trackerVm.OpenConfigFileAction = OpenConfigFile;
+                () => Settings, msg => { try { ThreadHelper.ThrowIfNotOnUIThread(); OutputWindow.Log(msg); } catch { } });
 
-            _historyVm = new HistoryViewModel(_historyRepo, msg => OutputWindow.Log(msg));
+            _trackerVm.FetchTaskFunc        = url => _taskFactory.FetchAsync(url);
+            _trackerVm.OpenSettingsAction   = OpenSettings;
+            _trackerVm.OpenHistoryAction    = () => JoinableTaskFactory.RunAsync(ShowHistoryWindowAsync);
+            _trackerVm.OpenLogFileAction    = OpenLogFile;
+            _trackerVm.OpenConfigFileAction = OpenConfigFile;
+            _trackerVm.SolutionFileService  = _solutionFileService;
+
+            // Wire history loader for URL duplicate check
+            _trackerVm.LoadAllHistoryFunc = async () =>
+            {
+                try { return await _historyRepo.GetAllAsync(); }
+                catch { return System.Linq.Enumerable.Empty<CompletionReport>(); }
+            };
+
+            _historyVm = new HistoryViewModel(_historyRepo, msg => { try { ThreadHelper.ThrowIfNotOnUIThread(); OutputWindow.Log(msg); } catch { } });
             _historyVm.OpenDetailAction = OpenReportDetail;
             _historyVm.OpenFileAction   = OpenFileInShell;
 
-            // Wire: resume a task from history → load into Tracker
+            // Wire: resume task from history
             _historyVm.ResumeFromHistoryAction = report =>
             {
                 if (report == null) return;
-                OutputWindow.Log(string.Format("[History] ▶ Resuming task from history: #{0} — {1}",
+                OutputWindow.Log(string.Format("[History] ▶ Resuming task: #{0} — {1}",
                     report.TaskId, report.TaskTitle));
                 var workLog = BuildWorkLogFromReport(report);
                 JoinableTaskFactory.RunAsync(async () =>
@@ -125,16 +137,16 @@ namespace DhCodetaskExtension
                 });
             };
 
-            // Wire: open URL in default browser (used by both Tracker and History panels)
+            // Wire: open URL
             _historyVm.OpenUrlAction = url =>
             {
                 if (string.IsNullOrEmpty(url)) return;
                 OutputWindow.Log("[History] 🔗 Opening URL: " + url);
                 try { Process.Start(url); }
-                catch (Exception ex) { OutputWindow.Log("[History] ❌ Open URL error: " + ex.Message); }
+                catch (Exception ex) { OutputWindow.Log("[History] ❌ " + ex.Message); }
             };
 
-            // 8. Switch to UI thread for command registration
+            // 9. UI thread — command registration
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             await ShowTrackerWindow.InitializeAsync(this);
@@ -146,7 +158,7 @@ namespace DhCodetaskExtension
             await OpenLogFileCommand.InitializeAsync(this);
             await OpenConfigFileCommand.InitializeAsync(this);
 
-            // 9. Restore in-progress task
+            // 10. Restore in-progress task
             try
             {
                 var existing = await _storage.LoadCurrentTaskAsync();
@@ -159,7 +171,7 @@ namespace DhCodetaskExtension
             }
             catch (Exception ex) { OutputWindow.Log("[Restore] " + ex.Message); }
 
-            OutputWindow.Log("[DevTaskTracker] v3.2 loaded. Settings: " + _storage.GetSettingsFilePath());
+            OutputWindow.Log("[DevTaskTracker] v3.3 loaded. Settings: " + _storage.GetSettingsFilePath());
             StatusBar.SetText("DevTask Tracker ready.");
         }
 
@@ -210,7 +222,7 @@ namespace DhCodetaskExtension
             await ShowToolWindowAsync(typeof(HistoryToolWindow), 0, true, DisposalToken);
         }
 
-        // ── Settings — JSON only ──────────────────────────────────────────
+        // ── Settings ─────────────────────────────────────────────────────
         public void OpenSettings()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -222,38 +234,37 @@ namespace DhCodetaskExtension
                 {
                     Settings = newSettings;
                     JoinableTaskFactory.RunAsync(() => _storage.SaveSettingsAsync(newSettings));
-                    OutputWindow.Log("[Settings] ✔ Settings saved from JSON editor.");
-                    AppLogger.Instance.Info("[Settings] JSON settings saved.");
+                    OutputWindow.Log("[Settings] ✔ Settings saved.");
                     StatusBar.SetText("Settings saved.");
                 });
             dlg.ShowDialog();
         }
 
-        // ── Log & Config file quick-open ──────────────────────────────────
+        // ── Log & Config quick-open ───────────────────────────────────────
         public void OpenLogFile()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            var dir     = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                                       "DhCodetaskExtension", "logs");
+            var dir     = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "DhCodetaskExtension", "logs");
             var logFile = Path.Combine(dir, string.Format("devtask_{0:yyyyMMdd}.log", DateTime.Today));
 
             if (!File.Exists(logFile) && Directory.Exists(dir))
             {
                 var files = Directory.GetFiles(dir, "*.log");
-                if (files.Length > 0)
-                    logFile = files.OrderByDescending(f => f).First();
+                if (files.Length > 0) logFile = files.OrderByDescending(f => f).First();
             }
 
             if (File.Exists(logFile))
             {
                 OutputWindow.Log("[Log] Opening: " + logFile);
                 try { Process.Start(logFile); }
-                catch (Exception ex) { OutputWindow.Log("[Log] ERROR opening log: " + ex.Message); }
+                catch (Exception ex) { OutputWindow.Log("[Log] ERROR: " + ex.Message); }
             }
             else
             {
                 OutputWindow.Log("[Log] No log file found at: " + dir);
-                StatusBar.SetText("No log file found — use the extension first.");
+                StatusBar.SetText("No log file found.");
             }
         }
 
@@ -265,17 +276,16 @@ namespace DhCodetaskExtension
             {
                 OutputWindow.Log("[Config] Opening: " + path);
                 try { Process.Start(path); }
-                catch (Exception ex) { OutputWindow.Log("[Config] ERROR opening config: " + ex.Message); }
+                catch (Exception ex) { OutputWindow.Log("[Config] ERROR: " + ex.Message); }
             }
             else
             {
-                OutputWindow.Log("[Config] Settings file not found, creating defaults: " + path);
+                OutputWindow.Log("[Config] Creating defaults: " + path);
                 JoinableTaskFactory.RunAsync(async () =>
                 {
                     await _storage.SaveSettingsAsync(Settings ?? new AppSettings());
                     await JoinableTaskFactory.SwitchToMainThreadAsync();
-                    if (File.Exists(path))
-                        try { Process.Start(path); } catch { }
+                    if (File.Exists(path)) try { Process.Start(path); } catch { }
                 });
             }
         }
@@ -294,10 +304,6 @@ namespace DhCodetaskExtension
                 try { Process.Start(path); } catch { }
         }
 
-        /// <summary>
-        /// Build a WorkLog from a CompletionReport so the task can be resumed in the Tracker panel.
-        /// Sessions are intentionally left empty — user will start fresh timer when they resume.
-        /// </summary>
         private static WorkLog BuildWorkLogFromReport(CompletionReport r)
         {
             return new WorkLog

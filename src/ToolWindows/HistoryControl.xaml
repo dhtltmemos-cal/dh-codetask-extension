@@ -57,18 +57,13 @@
         <Border Grid.Row="1" BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="8,6">
             <StackPanel>
                 <WrapPanel>
-                    <RadioButton Content="Hôm nay" Style="{StaticResource FilterBtn}"
-                                 Checked="Filter_Today"/>
-                    <RadioButton Content="Tuần này" Style="{StaticResource FilterBtn}"
-                                 IsChecked="True" Checked="Filter_Week"/>
-                    <RadioButton Content="Tháng này" Style="{StaticResource FilterBtn}"
-                                 Checked="Filter_Month"/>
-                    <RadioButton Content="Tùy chỉnh" Style="{StaticResource FilterBtn}"
-                                 Checked="Filter_Custom"/>
+                    <RadioButton Content="Hôm nay"   Style="{StaticResource FilterBtn}" Checked="Filter_Today"/>
+                    <RadioButton Content="Tuần này"  Style="{StaticResource FilterBtn}" IsChecked="True" Checked="Filter_Week"/>
+                    <RadioButton Content="Tháng này" Style="{StaticResource FilterBtn}" Checked="Filter_Month"/>
+                    <RadioButton Content="Tùy chỉnh" Style="{StaticResource FilterBtn}" Checked="Filter_Custom"/>
                     <Button Content="🔄" Width="28" Height="26" FontSize="12" Margin="4,0,0,0"
                             ToolTip="Refresh" Click="BtnRefresh_Click"/>
                 </WrapPanel>
-                <!-- Custom range -->
                 <WrapPanel x:Name="CustomRangePanel" Margin="0,4,0,0" Visibility="Collapsed">
                     <TextBlock Text="Từ:" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="11"/>
                     <DatePicker x:Name="DpFrom" Width="110" FontSize="11"
@@ -93,8 +88,7 @@
         </Border>
 
         <!-- Summary Bar -->
-        <Border Grid.Row="3" Background="#F5F5F5" Padding="8,6"
-                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+        <Border Grid.Row="3" Background="#F5F5F5" Padding="8,6" BorderBrush="#DDD" BorderThickness="0,0,0,1">
             <UniformGrid Columns="4">
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Text="{Binding Summary.TotalTasks}" FontSize="16" FontWeight="Bold"
@@ -153,27 +147,41 @@
                                             <Run Text="/"/><Run Text="{Binding TodoTotal}"/>
                                             <Run Text=" ✓"/>
                                         </TextBlock>
+                                        <!-- Checksum indicator (v3.3) -->
+                                        <TextBlock FontSize="9" Margin="0,1,0,0"
+                                                   Text="{Binding ChecksumDisplay}"
+                                                   ToolTip="{Binding ChecksumTooltip}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#999"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ChecksumValid}" Value="False">
+                                                            <Setter Property="Foreground" Value="#E65100"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ChecksumValid}" Value="True">
+                                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </StackPanel>
 
                                     <!-- Action buttons (right) -->
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Width="70">
-                                        <!-- Resume button — load task back into Tracker -->
                                         <Button Content="▶ Resume"
                                                 Style="{StaticResource RowActionBtn}"
                                                 Tag="{Binding}"
                                                 Click="BtnResume_Click"
                                                 ToolTip="Tiếp tục task này trong Tracker"/>
-                                        <!-- Open URL -->
                                         <Button Content="🔗 URL"
                                                 Style="{StaticResource RowActionBtn}"
                                                 Tag="{Binding}"
                                                 Click="BtnOpenUrl_Click"
                                                 ToolTip="Mở URL task trong browser"/>
-                                        <!-- Pushed indicator -->
                                         <TextBlock Text="🔀 Pushed" FontSize="9" Foreground="#4CAF50"
                                                    Visibility="{Binding WasPushed, Converter={StaticResource BoolVis}}"
                                                    Margin="0,1,0,0"/>
-                                        <!-- Delete -->
                                         <Button Content="🗑 Xóa"
                                                 Style="{StaticResource RowActionBtn}"
                                                 Tag="{Binding}"

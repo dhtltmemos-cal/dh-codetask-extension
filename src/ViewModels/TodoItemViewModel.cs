@@ -11,10 +11,10 @@ namespace DhCodetaskExtension.ViewModels
 {
     public sealed class TodoItemViewModel : INotifyPropertyChanged
     {
-        private readonly IEventBus _eventBus;
-        private readonly string _taskId;
-        private DispatcherTimer _timer;
-        private TimeSession _currentSession;
+        private readonly IEventBus  _eventBus;
+        private readonly string     _taskId;
+        private DispatcherTimer     _timer;
+        private TimeSession         _currentSession;
 
         public TodoItem Model { get; }
 
@@ -24,12 +24,7 @@ namespace DhCodetaskExtension.ViewModels
             set { Model.Text = value; OnPropertyChanged(nameof(Text)); }
         }
 
-        public bool IsDone
-        {
-            get => Model.IsDone;
-            set { Model.IsDone = value; OnPropertyChanged(nameof(IsDone)); }
-        }
-
+        public bool IsDone => Model.IsDone;
         public TodoStatus Status => Model.Status;
 
         private string _elapsedDisplay = "00:00:00";
@@ -39,33 +34,38 @@ namespace DhCodetaskExtension.ViewModels
             private set { _elapsedDisplay = value; OnPropertyChanged(nameof(ElapsedDisplay)); }
         }
 
-        public bool IsRunning => Model.Status == TodoStatus.Running;
-        public bool IsPaused => Model.Status == TodoStatus.Paused;
-        public bool IsIdle => Model.Status == TodoStatus.Idle;
+        public bool IsRunning  => Model.Status == TodoStatus.Running;
+        public bool IsPaused   => Model.Status == TodoStatus.Paused;
+        public bool IsIdle     => Model.Status == TodoStatus.Idle;
         public bool IsComplete => Model.Status == TodoStatus.Done;
-        public bool CanStart => Model.Status == TodoStatus.Idle || Model.Status == TodoStatus.Paused;
-        public bool CanPause => Model.Status == TodoStatus.Running;
+        public bool CanStart   => Model.Status == TodoStatus.Idle || Model.Status == TodoStatus.Paused;
+        public bool CanPause   => Model.Status == TodoStatus.Running;
+        public bool CanStop    => Model.Status == TodoStatus.Running || Model.Status == TodoStatus.Paused;
 
-        public ICommand StartCommand { get; }
-        public ICommand PauseCommand { get; }
+        public ICommand StartCommand    { get; }
+        public ICommand PauseCommand    { get; }
+        public ICommand StopCommand     { get; }
         public ICommand CompleteCommand { get; }
-        public ICommand DeleteCommand { get; }
+        public ICommand DeleteCommand   { get; }
 
         public event Action<TodoItemViewModel> DeleteRequested;
 
         public TodoItemViewModel(TodoItem model, IEventBus eventBus, string taskId)
         {
-            Model = model ?? throw new ArgumentNullException(nameof(model));
+            Model     = model    ?? throw new ArgumentNullException(nameof(model));
             _eventBus = eventBus;
-            _taskId = taskId;
+            _taskId   = taskId;
 
-            StartCommand = new RelayCommand(StartTodo, () => CanStart);
-            PauseCommand = new RelayCommand(PauseTodo, () => CanPause);
+            StartCommand    = new RelayCommand(StartTodo,    () => CanStart);
+            PauseCommand    = new RelayCommand(PauseTodo,    () => CanPause);
+            StopCommand     = new RelayCommand(StopTodo,     () => CanStop);
             CompleteCommand = new RelayCommand(CompleteTodo, () => !IsComplete);
-            DeleteCommand = new RelayCommand(() => DeleteRequested?.Invoke(this));
+            DeleteCommand   = new RelayCommand(() => DeleteRequested?.Invoke(this));
 
             UpdateElapsed();
         }
+
+        // ── Timer state machine ───────────────────────────────────────────
 
         public void StartTodo()
         {
@@ -81,34 +81,44 @@ namespace DhCodetaskExtension.ViewModels
         public void PauseTodo()
         {
             if (!CanPause) return;
-            FinalizeSession();
+            FinalizeSession(string.Empty);
             Model.Status = TodoStatus.Paused;
             StopTimer();
             RaiseStateChanged();
             _eventBus?.Publish(new TodoPausedEvent { Todo = Model });
         }
 
-        public void CompleteTodo()
+        /// <summary>Stop and mark done — counts as completing the TODO item.</summary>
+        public void StopTodo()
         {
-            if (Model.Status == TodoStatus.Running) FinalizeSession();
-            Model.IsDone = true;
-            Model.Status = TodoStatus.Done;
+            if (!CanStop) return;
+            if (Model.Status == TodoStatus.Running)
+                FinalizeSession(string.Empty);
+            Model.IsDone  = true;
+            Model.Status  = TodoStatus.Done;
             StopTimer();
             RaiseStateChanged();
             _eventBus?.Publish(new TodoCompletedEvent { Todo = Model, Elapsed = Model.TotalElapsed });
         }
 
+        /// <summary>Alias kept for compatibility — same as StopTodo.</summary>
+        public void CompleteTodo() => StopTodo();
+
+        /// <summary>Called by TrackerViewModel when the parent task is paused.</summary>
         public void AutoPause()
         {
             if (Model.Status == TodoStatus.Running) PauseTodo();
         }
 
-        private void FinalizeSession()
+        // ── Private helpers ───────────────────────────────────────────────
+
+        private void FinalizeSession(string pauseReason)
         {
             if (_currentSession != null)
             {
-                _currentSession.EndTime = DateTime.UtcNow;
-                _currentSession = null;
+                _currentSession.EndTime     = DateTime.UtcNow;
+                _currentSession.PauseReason = pauseReason ?? string.Empty;
+                _currentSession             = null;
             }
         }
 
@@ -127,7 +137,8 @@ namespace DhCodetaskExtension.ViewModels
             var ts = Model.TotalElapsed;
             if (Model.Status == TodoStatus.Running && _currentSession != null)
                 ts += DateTime.UtcNow - _currentSession.StartTime;
-            ElapsedDisplay = $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+            ElapsedDisplay = string.Format("{0:D2}:{1:D2}:{2:D2}",
+                (int)ts.TotalHours, ts.Minutes, ts.Seconds);
         }
 
         private void RaiseStateChanged()
@@ -137,8 +148,10 @@ namespace DhCodetaskExtension.ViewModels
             OnPropertyChanged(nameof(IsPaused));
             OnPropertyChanged(nameof(IsIdle));
             OnPropertyChanged(nameof(IsComplete));
+            OnPropertyChanged(nameof(IsDone));
             OnPropertyChanged(nameof(CanStart));
             OnPropertyChanged(nameof(CanPause));
+            OnPropertyChanged(nameof(CanStop));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

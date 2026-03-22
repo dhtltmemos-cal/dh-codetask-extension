@@ -6,6 +6,7 @@ using DhCodetaskExtension.Core.Interfaces;
 using DhCodetaskExtension.Core.Models;
 using DhCodetaskExtension.Core.Services;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DhCodetaskExtension.Providers.StorageProviders
 {
@@ -20,13 +21,11 @@ namespace DhCodetaskExtension.Providers.StorageProviders
                 ?? throw new ArgumentNullException(nameof(rootDirectoryProvider));
         }
 
-        private string Root           => _rootProvider();
-        private string SettingsPath   => Path.Combine(Root, "settings.json");
+        private string Root            => _rootProvider();
+        private string SettingsPath    => Path.Combine(Root, "settings.json");
         private string CurrentTaskPath => Path.Combine(Root, "current-task.json");
-        public string GetHistoryDirectory() => Path.Combine(Root, "history");
-
-        /// <summary>Returns the absolute path to settings.json (may not exist yet).</summary>
-        public string GetSettingsFilePath() => SettingsPath;
+        public  string GetHistoryDirectory() => Path.Combine(Root, "history");
+        public  string GetSettingsFilePath() => SettingsPath;
 
         private void EnsureRoot()
         {
@@ -48,10 +47,7 @@ namespace DhCodetaskExtension.Providers.StorageProviders
                 var json = await Task.Run(() => File.ReadAllText(SettingsPath, Encoding.UTF8));
                 _cachedSettings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
             }
-            catch
-            {
-                _cachedSettings = new AppSettings();
-            }
+            catch { _cachedSettings = new AppSettings(); }
             return _cachedSettings;
         }
 
@@ -112,9 +108,19 @@ namespace DhCodetaskExtension.Providers.StorageProviders
 
             report.SetFilePaths(jsonPath, mdPath);
 
-            var json = JsonConvert.SerializeObject(report, Formatting.Indented);
-            await AtomicFile.WriteAllTextAsync(jsonPath, json);
+            // ── Compute checksum ──────────────────────────────────────────
+            // 1. Serialize WITHOUT checksum field
+            var reportWithoutChecksum = JsonConvert.SerializeObject(report, Formatting.Indented);
+            // 2. Compute SHA-256 of that serialization
+            var checksum = ChecksumHelper.Compute(reportWithoutChecksum);
+            report.SetChecksum(checksum);
+            // 3. Serialize again WITH checksum
+            var finalJson = JsonConvert.SerializeObject(report, Formatting.Indented);
+
+            await AtomicFile.WriteAllTextAsync(jsonPath, finalJson);
         }
+
+        // ── Static helper ─────────────────────────────────────────────────
 
         private static string Slugify(string s)
         {

@@ -30,6 +30,18 @@ namespace DhCodetaskExtension.ViewModels
         public string   GroupKey         => CompletedAt.ToLocalTime().ToString("yyyy-MM-dd");
         public string   GroupLabel       => CompletedAt.ToLocalTime().ToString("dddd, dd/MM/yyyy");
         public CompletionReport FullReport { get; set; }
+
+        // ── Checksum (v3.3) ───────────────────────────────────────────────
+        /// <summary>true = checksum present and valid, false = invalid/tampered, null = no checksum.</summary>
+        public bool?   ChecksumValid    { get; set; }
+        public string  ChecksumDisplay  => ChecksumValid == null ? "—"
+                                        : ChecksumValid == true  ? "✅ OK"
+                                                                   : "⚠ Thay đổi";
+        public string  ChecksumTooltip  => ChecksumValid == null
+            ? "Report này chưa có checksum (tạo trước v3.3)"
+            : ChecksumValid == true
+                ? "Dữ liệu toàn vẹn — không có can thiệp từ bên ngoài"
+                : "⚠ Checksum không khớp — dữ liệu có thể đã bị thay đổi bên ngoài extension";
     }
 
     public class HistorySummary
@@ -42,7 +54,8 @@ namespace DhCodetaskExtension.ViewModels
         public string   TotalElapsedDisplay => FormatSpan(TotalElapsed);
         public string   AvgElapsedDisplay   => FormatSpan(AvgElapsed);
         public string   TodoDoneRateDisplay => string.Format("{0:P0}", TodoDoneRate);
-        private static string FormatSpan(TimeSpan ts) => string.Format("{0}h {1}m", (int)ts.TotalHours, ts.Minutes);
+        private static string FormatSpan(TimeSpan ts) =>
+            string.Format("{0}h {1}m", (int)ts.TotalHours, ts.Minutes);
     }
 
     public sealed class HistoryViewModel : INotifyPropertyChanged
@@ -51,12 +64,12 @@ namespace DhCodetaskExtension.ViewModels
         private readonly Action<string>     _log;
         private const int PageSize = 20;
 
-        private HistoryViewMode _viewMode = HistoryViewMode.ThisWeek;
-        private DateTime        _customFrom = DateTime.Today.AddDays(-7);
-        private DateTime        _customTo   = DateTime.Today;
+        private HistoryViewMode _viewMode    = HistoryViewMode.ThisWeek;
+        private DateTime        _customFrom  = DateTime.Today.AddDays(-7);
+        private DateTime        _customTo    = DateTime.Today;
         private string          _searchKeyword = string.Empty;
         private bool            _isLoading;
-        private int             _currentPage = 1;
+        private int             _currentPage   = 1;
         private List<CompletionReportSummary> _allItems = new List<CompletionReportSummary>();
 
         public HistoryViewMode ViewMode
@@ -80,7 +93,6 @@ namespace DhCodetaskExtension.ViewModels
         public bool   CanPrev     => CurrentPage > 1;
         public bool   CanNext     => CurrentPage < TotalPages;
 
-        // ── Commands ──────────────────────────────────────────────────────
         public ICommand RefreshCommand      { get; }
         public ICommand PrevPageCommand     { get; }
         public ICommand NextPageCommand     { get; }
@@ -89,21 +101,10 @@ namespace DhCodetaskExtension.ViewModels
         public RelayCommand<CompletionReportSummary> ResumeCommand  { get; }
         public RelayCommand<CompletionReportSummary> OpenUrlCommand { get; }
 
-        // ── Action delegates (wired by Package) ───────────────────────────
-        public Action<CompletionReportSummary> OpenDetailAction { get; set; }
-        public Action<string>                  OpenFileAction   { get; set; }
-
-        /// <summary>
-        /// Called when user clicks "Resume" on a history row.
-        /// Package wires this to load the report into TrackerViewModel.
-        /// </summary>
-        public Action<CompletionReport> ResumeFromHistoryAction { get; set; }
-
-        /// <summary>
-        /// Called to open a URL in the default browser.
-        /// Package wires this to Process.Start.
-        /// </summary>
-        public Action<string> OpenUrlAction { get; set; }
+        public Action<CompletionReportSummary> OpenDetailAction       { get; set; }
+        public Action<string>                  OpenFileAction         { get; set; }
+        public Action<CompletionReport>        ResumeFromHistoryAction { get; set; }
+        public Action<string>                  OpenUrlAction          { get; set; }
 
         public HistoryViewModel(IHistoryRepository repo, Action<string> log)
         {
@@ -120,7 +121,7 @@ namespace DhCodetaskExtension.ViewModels
             {
                 if (s?.FullReport != null)
                 {
-                    _log(string.Format("[History] ▶ Resume requested: #{0} {1}", s.TaskId, s.TaskTitle));
+                    _log(string.Format("[History] ▶ Resume: #{0} {1}", s.TaskId, s.TaskTitle));
                     ResumeFromHistoryAction?.Invoke(s.FullReport);
                 }
             });
@@ -128,13 +129,10 @@ namespace DhCodetaskExtension.ViewModels
             OpenUrlCommand = new RelayCommand<CompletionReportSummary>(s =>
             {
                 var url = s?.FullReport?.TaskUrl ?? string.Empty;
-                if (string.IsNullOrEmpty(url)) return;
-                _log("[History] 🔗 Open URL: " + url);
-                OpenUrlAction?.Invoke(url);
+                if (!string.IsNullOrEmpty(url)) { _log("[History] 🔗 " + url); OpenUrlAction?.Invoke(url); }
             });
         }
 
-        // ── Public async entry ────────────────────────────────────────────
         public async Task RefreshAsync()
         {
             IsLoading = true;
@@ -171,9 +169,8 @@ namespace DhCodetaskExtension.ViewModels
             catch (Exception ex) { _log("[History] Delete error: " + ex.Message); }
         }
 
-        // ── Private helpers ───────────────────────────────────────────────
-        private void RefreshFireAndForget()       { var _ = RefreshAsync(); }
-        private void DeleteFireAndForget(CompletionReportSummary s) { var _ = DeleteAsync(s); }
+        private void RefreshFireAndForget()                          { var _ = RefreshAsync(); }
+        private void DeleteFireAndForget(CompletionReportSummary s)  { var _ = DeleteAsync(s); }
 
         private void ApplyFilter()
         {
@@ -214,22 +211,31 @@ namespace DhCodetaskExtension.ViewModels
         private void PrevPage() { if (CanPrev) { CurrentPage--; ApplyFilter(); } }
         private void NextPage() { if (CanNext) { CurrentPage++; ApplyFilter(); } }
 
-        private static CompletionReportSummary ToSummary(CompletionReport r) => new CompletionReportSummary
+        private static CompletionReportSummary ToSummary(CompletionReport r)
         {
-            ReportId         = r.ReportId,
-            TaskId           = r.TaskId,
-            TaskTitle        = r.TaskTitle,
-            StartedAt        = r.StartedAt.ToLocalTime(),
-            CompletedAt      = r.CompletedAt.ToLocalTime(),
-            TotalElapsed     = r.TotalElapsed,
-            ElapsedDisplay   = FormatSpan(r.TotalElapsed),
-            TodoDone         = r.TodoDone,
-            TodoTotal        = r.TodoTotal,
-            WasPushed        = r.WasPushed,
-            JsonFilePath     = r.JsonFilePath,
-            MarkdownFilePath = r.MarkdownFilePath,
-            FullReport       = r
-        };
+            // Determine checksum status
+            bool? csValid = null;
+            if (!string.IsNullOrEmpty(r.Checksum))
+                csValid = r.ChecksumValid;
+
+            return new CompletionReportSummary
+            {
+                ReportId         = r.ReportId,
+                TaskId           = r.TaskId,
+                TaskTitle        = r.TaskTitle,
+                StartedAt        = r.StartedAt.ToLocalTime(),
+                CompletedAt      = r.CompletedAt.ToLocalTime(),
+                TotalElapsed     = r.TotalElapsed,
+                ElapsedDisplay   = FormatSpan(r.TotalElapsed),
+                TodoDone         = r.TodoDone,
+                TodoTotal        = r.TodoTotal,
+                WasPushed        = r.WasPushed,
+                JsonFilePath     = r.JsonFilePath,
+                MarkdownFilePath = r.MarkdownFilePath,
+                FullReport       = r,
+                ChecksumValid    = csValid
+            };
+        }
 
         private static string FormatSpan(TimeSpan ts) =>
             ts.TotalHours >= 1
