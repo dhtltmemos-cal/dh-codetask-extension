@@ -96,23 +96,36 @@
             <!-- ── TODO List ──────────────────────────────────────────── -->
             <TextBlock Text="── ✅ TODO List ──" Style="{StaticResource SectionLabel}"/>
 
-            <!-- Quick add from template -->
-            <Expander Header="📋 Chọn nhanh từ mẫu" FontSize="10" Margin="0,0,0,4"
-                      Visibility="{Binding TodoTemplates.Count, Converter={StaticResource BoolVis}}">
-                <ItemsControl ItemsSource="{Binding TodoTemplates}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><WrapPanel Margin="0,4,0,0"/></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding}" FontSize="10" Height="22" Padding="6,0"
-                                    Margin="0,0,4,4"
-                                    Command="{Binding DataContext.AddTodoFromTemplateCommand,
-                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+            <!--
+                v3.8 FIX: Bind Visibility to HasTodoTemplates (bool) instead of
+                TodoTemplates.Count (int). BooleanToVisibilityConverter only accepts bool.
+                Previously the Expander was always hidden because int cannot be converted.
+            -->
+            <Expander Header="📋 Chọn nhanh từ mẫu" FontSize="10" Margin="0,0,0,6"
+                      IsExpanded="True"
+                      Visibility="{Binding HasTodoTemplates, Converter={StaticResource BoolVis}}">
+                <Border Background="#F8F8F8" BorderBrush="#E0E0E0" BorderThickness="1"
+                        CornerRadius="3" Padding="6,6">
+                    <StackPanel>
+                        <TextBlock Text="Nhấn để điền vào ô bên dưới, sau đó nhấn Add:"
+                                   FontSize="9" Foreground="#999" Margin="0,0,0,4"/>
+                        <ItemsControl ItemsSource="{Binding TodoTemplates}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding}" FontSize="10" Height="24"
+                                            Padding="8,0" Margin="0,0,4,4"
+                                            ToolTip="{Binding}"
+                                            Command="{Binding DataContext.AddTodoFromTemplateCommand,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
             </Expander>
 
             <!-- New TODO input -->
@@ -120,13 +133,21 @@
                 <Button DockPanel.Dock="Right" Content="Add" Width="45" Height="26"
                         FontSize="11" Command="{Binding AddTodoCommand}" Margin="4,0,0,0"/>
                 <TextBox Text="{Binding NewTodoText, UpdateSourceTrigger=PropertyChanged}"
-                         Height="26" FontSize="11" Padding="4,2" VerticalContentAlignment="Center">
+                         Height="26" FontSize="11" Padding="4,2" VerticalContentAlignment="Center"
+                         ToolTip="Nhập nội dung TODO rồi nhấn Add hoặc Enter">
                     <TextBox.InputBindings>
                         <KeyBinding Key="Return" Command="{Binding AddTodoCommand}"/>
                     </TextBox.InputBindings>
                 </TextBox>
             </DockPanel>
 
+            <!--
+                v3.8: TODO item buttons (▶/⏸/✓) follow parent task state:
+                  - ▶ Start:  only enabled when parent task is Running AND todo is Idle/Paused
+                  - ⏸ Pause:  only enabled when todo is Running
+                  - ✓ Stop:   only enabled when todo is Running or Paused
+                The CanStart logic lives in TodoItemViewModel.CanStart (Func<bool> delegate).
+            -->
             <ItemsControl ItemsSource="{Binding Todos, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -155,7 +176,8 @@
                                 </StackPanel>
                                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                                     <Button Content="▶" Width="24" Height="24" FontSize="10" Margin="1"
-                                            Command="{Binding StartCommand}" ToolTip="Bắt đầu"/>
+                                            Command="{Binding StartCommand}"
+                                            ToolTip="Bắt đầu (chỉ khi task cha đang chạy)"/>
                                     <Button Content="⏸" Width="24" Height="24" FontSize="10" Margin="1"
                                             Command="{Binding PauseCommand}" ToolTip="Tạm ngưng"/>
                                     <Button Content="✓" Width="24" Height="24" FontSize="10" Margin="1"

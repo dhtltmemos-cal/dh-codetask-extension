@@ -1,1 +1,1 @@
-v3.7: Fix ripgrep logging (command/time/stderr); fix checksum canonical form; fix History refresh force-invalidate; fix TODO button states (CanExecuteChanged); fix TodoTemplate sets text only (Add button enable)
+v3.8: Fix TodoTemplates Expander (BoolVis int→bool); TODO ▶ button gated by parent task Running state

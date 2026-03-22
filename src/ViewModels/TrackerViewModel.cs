@@ -52,13 +52,28 @@ namespace DhCodetaskExtension.ViewModels
         public string BusinessLogic   { get => _businessLogic;   set { _businessLogic   = value; OnProp(nameof(BusinessLogic)); } }
         public string CommitMessage   { get => _commitMessage;   set { _commitMessage   = value; OnProp(nameof(CommitMessage)); } }
         public string TimerDisplay    { get => _timerDisplay;    set { _timerDisplay    = value; OnProp(nameof(TimerDisplay)); } }
-        public string TimerState      { get => _timerState;      set { _timerState      = value; OnProp(nameof(TimerState)); RaiseCommandsChanged(); } }
-        public bool   GitAvailable    { get => _gitAvailable;    set { _gitAvailable    = value; OnProp(nameof(GitAvailable)); } }
 
         /// <summary>
-        /// v3.7: Setter raises AddTodoCommand.CanExecuteChanged so the Add button
-        /// immediately enables when text is filled (e.g. by selecting a template).
+        /// When TimerState changes, three things must happen:
+        /// 1. UI commands for the task (Start/Pause/Resume) update their enabled state.
+        /// 2. Every TodoItemViewModel refreshes its CanStart — which now depends on parent Running state.
+        /// 3. HasTodoTemplates is re-evaluated if needed.
         /// </summary>
+        public string TimerState
+        {
+            get => _timerState;
+            set
+            {
+                _timerState = value;
+                OnProp(nameof(TimerState));
+                RaiseCommandsChanged();
+                // v3.8: refresh all todo items so Start button enables/disables correctly
+                RefreshTodoParentStateCommands();
+            }
+        }
+
+        public bool   GitAvailable    { get => _gitAvailable;    set { _gitAvailable    = value; OnProp(nameof(GitAvailable)); } }
+
         public string NewTodoText
         {
             get => _newTodoText;
@@ -72,6 +87,12 @@ namespace DhCodetaskExtension.ViewModels
 
         public ObservableCollection<TodoItemViewModel> Todos         { get; } = new ObservableCollection<TodoItemViewModel>();
         public ObservableCollection<string>            TodoTemplates { get; } = new ObservableCollection<string>();
+
+        /// <summary>
+        /// v3.8: BooleanToVisibilityConverter requires a bool, not an int (Count).
+        /// Bind Expander.Visibility to this instead of TodoTemplates.Count.
+        /// </summary>
+        public bool HasTodoTemplates => TodoTemplates.Count > 0;
 
         public int    TodoTotal   => Todos.Count;
         public int    TodoDone    => Todos.Count(t => t.IsDone);
@@ -106,7 +127,6 @@ namespace DhCodetaskExtension.ViewModels
         public Action OpenLogFileAction        { get; set; }
         public Action OpenConfigFileAction     { get; set; }
         public Action OpenProjectHelperAction  { get; set; }
-        /// <summary>Called to show the pause reason dialog; returns selected reason or null if cancelled.</summary>
         public Func<string> ShowPauseReasonDialog { get; set; }
 
         public TrackerViewModel(
@@ -133,14 +153,13 @@ namespace DhCodetaskExtension.ViewModels
             PushAndCompleteCommand  = new RelayCommand(PushAndCompleteFireAndForget);
             SaveAndPauseCommand     = new RelayCommand(SaveAndPauseFireAndForget);
 
-            // v3.7: Template button sets text in the input box and enables the Add button.
-            // The user can then review / modify the text and click Add.
-            // (Previously this auto-added immediately, which skipped user review.)
+            // v3.8: Template button fills input box; user reviews then clicks Add.
+            // NewTodoText setter raises AddTodoCommand.CanExecuteChanged automatically.
             AddTodoFromTemplateCommand = new RelayCommand<string>(t =>
             {
                 if (!string.IsNullOrWhiteSpace(t))
                 {
-                    NewTodoText = t;   // setter raises AddTodoCommand.CanExecuteChanged
+                    NewTodoText = t;
                     _log("[Tracker] 📋 TODO template selected: " + t);
                 }
             });
@@ -254,7 +273,7 @@ namespace DhCodetaskExtension.ViewModels
         {
             if (TimerState == "Idle")         _timer.Start();
             else if (TimerState == "Paused")  _timer.Resume();
-            TimerState = "Running";
+            TimerState = "Running";   // setter refreshes todo CanStart
             _log(string.Format("[Tracker] ▶ Task started/resumed: \"{0}\"", TaskTitle));
             _eventBus.Publish(new TaskStartedEvent { StartTime = DateTime.Now });
         }
@@ -269,7 +288,7 @@ namespace DhCodetaskExtension.ViewModels
             }
             foreach (var t in Todos) t.AutoPause();
             _timer.Pause(reason);
-            TimerState = "Paused";
+            TimerState = "Paused";    // setter refreshes todo CanStart → Start buttons disable
             _log(string.Format("[Tracker] ⏸ Task paused — reason: {0} — elapsed: {1}",
                 string.IsNullOrEmpty(reason) ? "(none)" : reason,
                 FormatSpan(_timer.GetElapsed())));
@@ -280,7 +299,7 @@ namespace DhCodetaskExtension.ViewModels
         private void ResumeTask()
         {
             _timer.Resume();
-            TimerState = "Running";
+            TimerState = "Running";   // setter refreshes todo CanStart → Start buttons enable
             _log("[Tracker] ▶ Task resumed");
             _eventBus.Publish(new TaskResumedEvent());
         }
@@ -289,7 +308,7 @@ namespace DhCodetaskExtension.ViewModels
         {
             foreach (var t in Todos) t.AutoPause();
             _timer.Stop();
-            TimerState = "Stopped";
+            TimerState = "Stopped";   // setter refreshes todo CanStart → Start buttons disable
             _log(string.Format("[Tracker] ⏹ Task stopped — total: {0}", FormatSpan(_timer.GetElapsed())));
         }
 
@@ -301,13 +320,17 @@ namespace DhCodetaskExtension.ViewModels
             var item = new TodoItem { Text = text };
             Todos.Add(CreateTodoVm(item));
             _log("[Tracker] ➕ TODO added: " + text);
-            NewTodoText = string.Empty;  // setter raises CanExecuteChanged, disabling Add button
+            NewTodoText = string.Empty;
             RaiseTodoSummary();
         }
 
         private TodoItemViewModel CreateTodoVm(TodoItem item)
         {
-            var vm = new TodoItemViewModel(item, _eventBus, _currentTask?.Id ?? string.Empty);
+            // v3.8: pass parent running predicate so CanStart is gated by task state
+            var vm = new TodoItemViewModel(
+                item, _eventBus, _currentTask?.Id ?? string.Empty,
+                isParentRunning: () => TimerState == "Running");
+
             vm.PropertyChanged += (s, e) => RaiseTodoSummary();
             vm.DeleteRequested += d =>
             {
@@ -316,6 +339,16 @@ namespace DhCodetaskExtension.ViewModels
                 RaiseTodoSummary();
             };
             return vm;
+        }
+
+        /// <summary>
+        /// v3.8: Called whenever TimerState changes so every todo item refreshes its
+        /// Start button enabled state based on the new parent task state.
+        /// </summary>
+        private void RefreshTodoParentStateCommands()
+        {
+            foreach (var vm in Todos)
+                vm.RefreshParentStateCommands();
         }
 
         private void RaiseTodoSummary()
@@ -419,6 +452,7 @@ namespace DhCodetaskExtension.ViewModels
             var templates = _settings().TodoTemplates;
             if (templates != null)
                 foreach (var t in templates) TodoTemplates.Add(t);
+            OnProp(nameof(HasTodoTemplates));   // v3.8: update Expander visibility
         }
 
         // ── Auto-save ─────────────────────────────────────────────────────
@@ -477,7 +511,7 @@ namespace DhCodetaskExtension.ViewModels
             _repoRoot     = log.RepoRoot ?? string.Empty;
 
             _timer.RestoreFrom(log.Sessions, TrackingState.Paused);
-            TimerState = "Paused";
+            TimerState = "Paused";  // setter refreshes todo CanStart
 
             Todos.Clear();
             foreach (var t in (log.Todos ?? new System.Collections.Generic.List<TodoItem>()))

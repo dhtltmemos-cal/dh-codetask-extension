@@ -11,10 +11,11 @@ namespace DhCodetaskExtension.ViewModels
 {
     public sealed class TodoItemViewModel : INotifyPropertyChanged
     {
-        private readonly IEventBus  _eventBus;
-        private readonly string     _taskId;
-        private DispatcherTimer     _timer;
-        private TimeSession         _currentSession;
+        private readonly IEventBus   _eventBus;
+        private readonly string      _taskId;
+        private readonly Func<bool>  _isParentRunning;   // v3.8
+        private DispatcherTimer      _timer;
+        private TimeSession          _currentSession;
 
         public TodoItem Model { get; }
 
@@ -38,9 +39,17 @@ namespace DhCodetaskExtension.ViewModels
         public bool IsPaused   => Model.Status == TodoStatus.Paused;
         public bool IsIdle     => Model.Status == TodoStatus.Idle;
         public bool IsComplete => Model.Status == TodoStatus.Done;
-        public bool CanStart   => Model.Status == TodoStatus.Idle || Model.Status == TodoStatus.Paused;
-        public bool CanPause   => Model.Status == TodoStatus.Running;
-        public bool CanStop    => Model.Status == TodoStatus.Running || Model.Status == TodoStatus.Paused;
+
+        /// <summary>
+        /// v3.8: CanStart requires BOTH own state (Idle or Paused) AND parent task Running.
+        /// A TODO cannot be started while the parent task is paused, stopped, or idle.
+        /// </summary>
+        public bool CanStart =>
+            (Model.Status == TodoStatus.Idle || Model.Status == TodoStatus.Paused)
+            && (_isParentRunning?.Invoke() ?? true);
+
+        public bool CanPause  => Model.Status == TodoStatus.Running;
+        public bool CanStop   => Model.Status == TodoStatus.Running || Model.Status == TodoStatus.Paused;
 
         public ICommand StartCommand    { get; }
         public ICommand PauseCommand    { get; }
@@ -50,11 +59,17 @@ namespace DhCodetaskExtension.ViewModels
 
         public event Action<TodoItemViewModel> DeleteRequested;
 
-        public TodoItemViewModel(TodoItem model, IEventBus eventBus, string taskId)
+        /// <param name="isParentRunning">
+        /// Delegate returning true when the parent task is in Running state.
+        /// When null, parent state is not checked.
+        /// </param>
+        public TodoItemViewModel(TodoItem model, IEventBus eventBus, string taskId,
+            Func<bool> isParentRunning = null)
         {
-            Model     = model    ?? throw new ArgumentNullException(nameof(model));
-            _eventBus = eventBus;
-            _taskId   = taskId;
+            Model            = model ?? throw new ArgumentNullException(nameof(model));
+            _eventBus        = eventBus;
+            _taskId          = taskId;
+            _isParentRunning = isParentRunning;
 
             StartCommand    = new RelayCommand(StartTodo,    () => CanStart);
             PauseCommand    = new RelayCommand(PauseTodo,    () => CanPause);
@@ -63,6 +78,18 @@ namespace DhCodetaskExtension.ViewModels
             DeleteCommand   = new RelayCommand(() => DeleteRequested?.Invoke(this));
 
             UpdateElapsed();
+        }
+
+        // ── Called by TrackerViewModel when parent task state changes ─────
+
+        /// <summary>
+        /// Re-evaluates CanStart after parent task state changes (Running/Paused/etc.).
+        /// TrackerViewModel calls this for every todo item when TimerState changes.
+        /// </summary>
+        public void RefreshParentStateCommands()
+        {
+            OnPropertyChanged(nameof(CanStart));
+            (StartCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         // ── Timer state machine ───────────────────────────────────────────
@@ -88,7 +115,6 @@ namespace DhCodetaskExtension.ViewModels
             _eventBus?.Publish(new TodoPausedEvent { Todo = Model });
         }
 
-        /// <summary>Stop and mark done — counts as completing the TODO item.</summary>
         public void StopTodo()
         {
             if (!CanStop) return;
@@ -101,16 +127,14 @@ namespace DhCodetaskExtension.ViewModels
             _eventBus?.Publish(new TodoCompletedEvent { Todo = Model, Elapsed = Model.TotalElapsed });
         }
 
-        /// <summary>Alias kept for compatibility — same as StopTodo.</summary>
         public void CompleteTodo() => StopTodo();
 
-        /// <summary>Called by TrackerViewModel when the parent task is paused.</summary>
         public void AutoPause()
         {
             if (Model.Status == TodoStatus.Running) PauseTodo();
         }
 
-        // ── Private helpers ───────────────────────────────────────────────
+        // ── Private ───────────────────────────────────────────────────────
 
         private void FinalizeSession(string pauseReason)
         {
@@ -141,10 +165,6 @@ namespace DhCodetaskExtension.ViewModels
                 (int)ts.TotalHours, ts.Minutes, ts.Seconds);
         }
 
-        /// <summary>
-        /// Raises property-change notifications AND CanExecuteChanged for all commands
-        /// so WPF buttons properly enable/disable based on current state.
-        /// </summary>
         private void RaiseStateChanged()
         {
             OnPropertyChanged(nameof(Status));
@@ -157,8 +177,6 @@ namespace DhCodetaskExtension.ViewModels
             OnPropertyChanged(nameof(CanPause));
             OnPropertyChanged(nameof(CanStop));
 
-            // v3.7: Raise CanExecuteChanged so button IsEnabled updates immediately.
-            // Without this, WPF doesn't know to re-evaluate CanExecute after state change.
             (StartCommand    as RelayCommand)?.RaiseCanExecuteChanged();
             (PauseCommand    as RelayCommand)?.RaiseCanExecuteChanged();
             (StopCommand     as RelayCommand)?.RaiseCanExecuteChanged();
