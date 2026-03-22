@@ -40,7 +40,7 @@ namespace DhCodetaskExtension.ToolWindows
         {
             ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                try { await _vm.RefreshAsync(); }
+                try { await _vm.RefreshAsync(forceInvalidate: false); }
                 catch (Exception ex) { AppLogger.Instance.Error("HistoryControl.OnLoaded", ex); }
             });
         }
@@ -86,11 +86,15 @@ namespace DhCodetaskExtension.ToolWindows
             });
         }
 
+        /// <summary>
+        /// Force-refresh: invalidates cache so latest files on disk are re-read.
+        /// This ensures newly completed tasks appear without restarting VS.
+        /// </summary>
         private void BtnRefresh_Click(object s, RoutedEventArgs e)
         {
             ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                try { await _vm.RefreshAsync(); }
+                try { await _vm.RefreshAsync(forceInvalidate: true); }
                 catch (Exception ex) { AppLogger.Instance.Error("BtnRefresh_Click", ex); }
             });
         }

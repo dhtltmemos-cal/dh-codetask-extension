@@ -1,2 +1,1 @@
-v3.6: Fix duplicate TaskPauseReasons; fix ripgrep Win32Exception via cmd.exe fallback; filter button (no auto-search); Content Search as top-level tab in Project Helper
-Bổ sung: docs\tasks\task-2026-03-22-04.md
+v3.7: Fix ripgrep logging (command/time/stderr); fix checksum canonical form; fix History refresh force-invalidate; fix TODO button states (CanExecuteChanged); fix TodoTemplate sets text only (Add button enable)

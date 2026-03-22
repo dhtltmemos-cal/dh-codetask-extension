@@ -1,3 +1,34 @@
+## 2026-03-22 17:30 — Task task-2026-03-22-04.md (v3.7)
+
+**Yêu cầu:** 4 vấn đề từ `docs/tasks/task-2026-03-22-04.md`
+
+**1. Fix ripgrep không có kết quả + bổ sung log đầy đủ**
+
+Thêm logging chi tiết ra Output Window: lệnh đầy đủ, thư mục tìm, thời gian thực thi (ms), exit code, số kết quả. Quan trọng nhất: **log toàn bộ stderr** của ripgrep — đây là nguồn debug chính khi không có kết quả. Fix thêm: thêm `--` trước pattern (ngăn pattern bị parse là flag), sửa `RelativePath` tính đúng từ scan root.
+
+**Files:** `src/ViewModels/ProjectHelperViewModel.cs`
+
+**2. Fix Task History refresh không hoạt động**
+
+Nguyên nhân: `HistoryQueryService` cache không bị invalidate khi user nhấn nút 🔄, dẫn đến dữ liệu cũ được trả về. Fix: thêm `InvalidateCache()` method, `BtnRefresh_Click` gọi `RefreshAsync(forceInvalidate: true)`, package wire `() => _historyRepo.InvalidateCache()` vào HistoryViewModel.
+
+**Files:** `src/Core/Services/HistoryQueryService.cs`, `src/ViewModels/HistoryViewModel.cs`, `src/ToolWindows/HistoryControl.xaml.cs`, `src/DevTaskTrackerPackage.cs`
+
+**3. Fix Checksum báo "thay đổi" sai**
+
+Nguyên nhân: Archive dùng `JsonConvert.SerializeObject` (có thể có `"Checksum": null`), còn verify dùng `JObject.Remove("Checksum") → ToString()` — hai chuỗi JSON khác nhau nên hash khác nhau. Fix: cả hai phía dùng cùng JObject round-trip: `Serialize → Parse → Remove("Checksum") → ToString`.
+
+**Files:** `src/Providers/StorageProviders/JsonStorageService.cs`, `src/Core/Services/HistoryQueryService.cs`
+
+**4. Fix TODO List buttons + Templates**
+
+- **TODO button states:** `RaiseStateChanged()` chỉ raise PropertyChanged nhưng không raise `CanExecuteChanged` → WPF không re-evaluate CanExecute → buttons không disable đúng. Fix: thêm `RaiseCanExecuteChanged()` cho Start/Pause/Stop/Complete commands trong `RaiseStateChanged()`.
+- **TodoTemplate:** Trước đây click template auto-add ngay, không enable nút Add. Đổi thành: click template chỉ điền text vào input box, nút Add tự enable (nhờ `NewTodoText` setter raise `AddTodoCommand.CanExecuteChanged`).
+
+**Files:** `src/ViewModels/TodoItemViewModel.cs`, `src/ViewModels/TrackerViewModel.cs`
+
+**Version bump:** 3.6 → 3.7
+
 ## 2026-03-22 16:30 — Task task-2026-03-22-03.md
 
 **Yêu cầu:** 4 vấn đề từ `docs/tasks/task-2026-03-22-03.md`:
@@ -6,7 +37,7 @@
 
 2. **Fix Win32Exception khi chạy ripgrep** — Nguyên nhân: VS2017 devenv.exe là tiến trình 32-bit; nếu rg.exe là bản 64-bit, Windows trả về error 193 (ERROR_BAD_EXE_FORMAT). Fix: thử chạy trực tiếp trước; nếu nhận Win32Exception với code 193/216/14001 thì fallback sang cmd.exe (vốn là 64-bit trên Windows x64) để spawn rg.exe.
 
-3. **Filter file .sln/.csproj chậm** — Bỏ auto-search khi gõ (`UpdateSourceTrigger=PropertyChanged` vẫn giữ cho binding nhưng setter của `FilterKeyword` không còn gọi `ApplyFilter()`). Thêm nút **Tìm** và Enter key binding để kích hoạt filter. Sort/type vẫn auto-apply vì không cần gõ text.
+3. **Filter file .sln/.csproj chậm** — Bỏ auto-search khi gõ. Thêm nút **Tìm** và Enter key binding để kích hoạt filter. Sort/type vẫn auto-apply vì không cần gõ text.
 
 4. **Đưa Content Search lên top-level tab** — Thay Expander ở đáy panel bằng 2 RadioButton mode toggle ở đầu: `📄 Danh sách File` | `🔍 Tìm nội dung`. Mỗi mode chiếm toàn bộ chiều cao panel. ViewModel thêm `IsFileMode`/`IsSearchMode` property. Code-behind xử lý `Mode_Files_Checked` / `Mode_Search_Checked`.
 

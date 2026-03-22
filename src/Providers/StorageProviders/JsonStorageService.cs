@@ -108,13 +108,18 @@ namespace DhCodetaskExtension.Providers.StorageProviders
 
             report.SetFilePaths(jsonPath, mdPath);
 
-            // ── Compute checksum ──────────────────────────────────────────
-            // 1. Serialize WITHOUT checksum field
-            var reportWithoutChecksum = JsonConvert.SerializeObject(report, Formatting.Indented);
-            // 2. Compute SHA-256 of that serialization
-            var checksum = ChecksumHelper.Compute(reportWithoutChecksum);
+            // ── Compute checksum using canonical JObject round-trip ───────
+            // 1. Serialize report (Checksum is null at this point)
+            var tempJson = JsonConvert.SerializeObject(report, Formatting.Indented);
+            // 2. Parse to JObject, remove "Checksum" key to get canonical form
+            //    (same approach used in HistoryQueryService.VerifyReportChecksum)
+            var jobjTemp = JObject.Parse(tempJson);
+            jobjTemp.Remove("Checksum");
+            var canonicalJson = jobjTemp.ToString(Formatting.Indented);
+            // 3. Compute SHA-256 of canonical form
+            var checksum = ChecksumHelper.Compute(canonicalJson);
             report.SetChecksum(checksum);
-            // 3. Serialize again WITH checksum
+            // 4. Final serialization WITH checksum
             var finalJson = JsonConvert.SerializeObject(report, Formatting.Indented);
 
             await AtomicFile.WriteAllTextAsync(jsonPath, finalJson);

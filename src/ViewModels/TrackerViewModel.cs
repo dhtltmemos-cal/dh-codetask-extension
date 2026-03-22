@@ -54,7 +54,21 @@ namespace DhCodetaskExtension.ViewModels
         public string TimerDisplay    { get => _timerDisplay;    set { _timerDisplay    = value; OnProp(nameof(TimerDisplay)); } }
         public string TimerState      { get => _timerState;      set { _timerState      = value; OnProp(nameof(TimerState)); RaiseCommandsChanged(); } }
         public bool   GitAvailable    { get => _gitAvailable;    set { _gitAvailable    = value; OnProp(nameof(GitAvailable)); } }
-        public string NewTodoText     { get => _newTodoText;     set { _newTodoText     = value; OnProp(nameof(NewTodoText)); } }
+
+        /// <summary>
+        /// v3.7: Setter raises AddTodoCommand.CanExecuteChanged so the Add button
+        /// immediately enables when text is filled (e.g. by selecting a template).
+        /// </summary>
+        public string NewTodoText
+        {
+            get => _newTodoText;
+            set
+            {
+                _newTodoText = value;
+                OnProp(nameof(NewTodoText));
+                (AddTodoCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
 
         public ObservableCollection<TodoItemViewModel> Todos         { get; } = new ObservableCollection<TodoItemViewModel>();
         public ObservableCollection<string>            TodoTemplates { get; } = new ObservableCollection<string>();
@@ -91,7 +105,7 @@ namespace DhCodetaskExtension.ViewModels
         public Action OpenHistoryAction        { get; set; }
         public Action OpenLogFileAction        { get; set; }
         public Action OpenConfigFileAction     { get; set; }
-        public Action OpenProjectHelperAction  { get; set; }   // v3.4 — opens Project Helper panel
+        public Action OpenProjectHelperAction  { get; set; }
         /// <summary>Called to show the pause reason dialog; returns selected reason or null if cancelled.</summary>
         public Func<string> ShowPauseReasonDialog { get; set; }
 
@@ -118,9 +132,17 @@ namespace DhCodetaskExtension.ViewModels
             RegenerateCommitCommand = new RelayCommand(RegenerateCommit);
             PushAndCompleteCommand  = new RelayCommand(PushAndCompleteFireAndForget);
             SaveAndPauseCommand     = new RelayCommand(SaveAndPauseFireAndForget);
+
+            // v3.7: Template button sets text in the input box and enables the Add button.
+            // The user can then review / modify the text and click Add.
+            // (Previously this auto-added immediately, which skipped user review.)
             AddTodoFromTemplateCommand = new RelayCommand<string>(t =>
             {
-                if (!string.IsNullOrWhiteSpace(t)) { NewTodoText = t; AddTodo(); }
+                if (!string.IsNullOrWhiteSpace(t))
+                {
+                    NewTodoText = t;   // setter raises AddTodoCommand.CanExecuteChanged
+                    _log("[Tracker] 📋 TODO template selected: " + t);
+                }
             });
 
             GitAvailable = _git?.IsAvailable() ?? false;
@@ -166,6 +188,7 @@ namespace DhCodetaskExtension.ViewModels
                             };
                             TaskTitle       = _currentTask.Title;
                             TaskDescription = _currentTask.Description;
+                            TaskUrl         = _currentTask.Url;
                             LabelsDisplay   = string.Join(", ", _currentTask.Labels);
                             RegenerateCommit();
                             StatusMessage = string.Format("📚 Lấy từ lịch sử #{0}: {1}", _currentTask.Id, _currentTask.Title);
@@ -278,7 +301,7 @@ namespace DhCodetaskExtension.ViewModels
             var item = new TodoItem { Text = text };
             Todos.Add(CreateTodoVm(item));
             _log("[Tracker] ➕ TODO added: " + text);
-            NewTodoText = string.Empty;
+            NewTodoText = string.Empty;  // setter raises CanExecuteChanged, disabling Add button
             RaiseTodoSummary();
         }
 

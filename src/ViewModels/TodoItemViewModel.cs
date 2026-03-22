@@ -24,7 +24,7 @@ namespace DhCodetaskExtension.ViewModels
             set { Model.Text = value; OnPropertyChanged(nameof(Text)); }
         }
 
-        public bool IsDone => Model.IsDone;
+        public bool IsDone  => Model.IsDone;
         public TodoStatus Status => Model.Status;
 
         private string _elapsedDisplay = "00:00:00";
@@ -141,6 +141,10 @@ namespace DhCodetaskExtension.ViewModels
                 (int)ts.TotalHours, ts.Minutes, ts.Seconds);
         }
 
+        /// <summary>
+        /// Raises property-change notifications AND CanExecuteChanged for all commands
+        /// so WPF buttons properly enable/disable based on current state.
+        /// </summary>
         private void RaiseStateChanged()
         {
             OnPropertyChanged(nameof(Status));
@@ -152,6 +156,13 @@ namespace DhCodetaskExtension.ViewModels
             OnPropertyChanged(nameof(CanStart));
             OnPropertyChanged(nameof(CanPause));
             OnPropertyChanged(nameof(CanStop));
+
+            // v3.7: Raise CanExecuteChanged so button IsEnabled updates immediately.
+            // Without this, WPF doesn't know to re-evaluate CanExecute after state change.
+            (StartCommand    as RelayCommand)?.RaiseCanExecuteChanged();
+            (PauseCommand    as RelayCommand)?.RaiseCanExecuteChanged();
+            (StopCommand     as RelayCommand)?.RaiseCanExecuteChanged();
+            (CompleteCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

@@ -40,8 +40,19 @@ namespace DhCodetaskExtension.Core.Services
                 };
                 _watcher.Created += (s, e) => _cacheDirty = true;
                 _watcher.Deleted += (s, e) => _cacheDirty = true;
+                _watcher.Changed += (s, e) => _cacheDirty = true;
             }
             catch { /* non-critical */ }
+        }
+
+        /// <summary>
+        /// Forces cache invalidation so next query re-reads from disk.
+        /// Call this when the user manually requests a refresh.
+        /// </summary>
+        public void InvalidateCache()
+        {
+            _cacheDirty = true;
+            lock (_lock) { _cache = null; }
         }
 
         private async Task<List<CompletionReport>> GetCacheAsync()
@@ -78,14 +89,15 @@ namespace DhCodetaskExtension.Core.Services
 
         /// <summary>
         /// Re-serialize the report WITHOUT the Checksum field, compute hash, compare.
-        /// Sets CompletionReport.ChecksumValid accordingly.
+        /// Uses JObject round-trip for canonical form — must match ArchiveReportAsync.
         /// </summary>
         private static void VerifyReportChecksum(CompletionReport report, string rawJson)
         {
             if (string.IsNullOrEmpty(report.Checksum)) return;
             try
             {
-                // Parse raw JSON, remove the "Checksum" key, re-serialize
+                // Parse raw JSON, remove the "Checksum" key, re-serialize via JObject
+                // to produce the same canonical form used during archive.
                 var obj = JObject.Parse(rawJson);
                 obj.Remove("Checksum");
                 var withoutChecksum = obj.ToString(Formatting.Indented);

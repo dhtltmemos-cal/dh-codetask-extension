@@ -62,6 +62,7 @@ namespace DhCodetaskExtension.ViewModels
     {
         private readonly IHistoryRepository _repo;
         private readonly Action<string>     _log;
+        private readonly Action             _invalidateCache;   // v3.7: injected from package
         private const int PageSize = 20;
 
         private HistoryViewMode _viewMode    = HistoryViewMode.ThisWeek;
@@ -101,17 +102,24 @@ namespace DhCodetaskExtension.ViewModels
         public RelayCommand<CompletionReportSummary> ResumeCommand  { get; }
         public RelayCommand<CompletionReportSummary> OpenUrlCommand { get; }
 
-        public Action<CompletionReportSummary> OpenDetailAction       { get; set; }
-        public Action<string>                  OpenFileAction         { get; set; }
+        public Action<CompletionReportSummary> OpenDetailAction        { get; set; }
+        public Action<string>                  OpenFileAction          { get; set; }
         public Action<CompletionReport>        ResumeFromHistoryAction { get; set; }
-        public Action<string>                  OpenUrlAction          { get; set; }
+        public Action<string>                  OpenUrlAction           { get; set; }
 
-        public HistoryViewModel(IHistoryRepository repo, Action<string> log)
+        /// <param name="invalidateCache">
+        /// Optional action to force-invalidate the repository cache before refresh.
+        /// Typically wired to HistoryQueryService.InvalidateCache() by the package.
+        /// </param>
+        public HistoryViewModel(IHistoryRepository repo, Action<string> log,
+            Action invalidateCache = null)
         {
-            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-            _log  = log  ?? (_ => { });
+            _repo            = repo ?? throw new ArgumentNullException(nameof(repo));
+            _log             = log  ?? (_ => { });
+            _invalidateCache = invalidateCache;
 
-            RefreshCommand      = new RelayCommand(RefreshFireAndForget);
+            // v3.7: RefreshCommand forces cache invalidation so disk is always re-read
+            RefreshCommand      = new RelayCommand(() => RefreshFireAndForget(forceInvalidate: true));
             PrevPageCommand     = new RelayCommand(PrevPage, () => CanPrev);
             NextPageCommand     = new RelayCommand(NextPage, () => CanNext);
             CustomFilterCommand = new RelayCommand(() => { _viewMode = HistoryViewMode.Custom; RefreshFireAndForget(); });
@@ -133,8 +141,18 @@ namespace DhCodetaskExtension.ViewModels
             });
         }
 
-        public async Task RefreshAsync()
+        /// <param name="forceInvalidate">
+        /// When true, invalidates the repository cache before querying — ensures
+        /// the latest files on disk are read. Use this for manual user-triggered refreshes.
+        /// </param>
+        public async Task RefreshAsync(bool forceInvalidate = false)
         {
+            if (forceInvalidate)
+            {
+                _log("[History] 🔄 Forcing cache invalidation...");
+                _invalidateCache?.Invoke();
+            }
+
             IsLoading = true;
             try
             {
@@ -152,8 +170,9 @@ namespace DhCodetaskExtension.ViewModels
                 CurrentPage = 1;
                 ApplyFilter();
                 BuildSummary(reports);
+                _log(string.Format("[History] ✅ Loaded {0} report(s) for mode={1}", _allItems.Count, ViewMode));
             }
-            catch (Exception ex) { _log("[History] " + ex.Message); }
+            catch (Exception ex) { _log("[History] ❌ " + ex.Message); }
             finally { IsLoading = false; }
         }
 
@@ -169,7 +188,11 @@ namespace DhCodetaskExtension.ViewModels
             catch (Exception ex) { _log("[History] Delete error: " + ex.Message); }
         }
 
-        private void RefreshFireAndForget()                          { var _ = RefreshAsync(); }
+        private void RefreshFireAndForget(bool forceInvalidate = false)
+        {
+            var _ = RefreshAsync(forceInvalidate);
+        }
+
         private void DeleteFireAndForget(CompletionReportSummary s)  { var _ = DeleteAsync(s); }
 
         private void ApplyFilter()
@@ -213,7 +236,6 @@ namespace DhCodetaskExtension.ViewModels
 
         private static CompletionReportSummary ToSummary(CompletionReport r)
         {
-            // Determine checksum status
             bool? csValid = null;
             if (!string.IsNullOrEmpty(r.Checksum))
                 csValid = r.ChecksumValid;
