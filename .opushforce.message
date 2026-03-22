@@ -1,14 +1,1 @@
-fix(history): null ref on Filter_Week during InitializeComponent + resume from history + open url + topmost dialogs
-
-- Fix NullReferenceException in HistoryControl Filter_Week/Today/Month/Custom
-  caused by RadioButton IsChecked=True firing during InitializeComponent before
-  CustomRangePanel is assigned — add _isInitialized guard flag
-- Add Resume task from history: HistoryViewModel.ResumeFromHistoryAction,
-  ResumeCommand, BtnResume_Click, DevTaskTrackerPackage.BuildWorkLogFromReport
-- Add Open URL in Tracker panel (🔗 button next to URL bar)
-- Add Open URL in History panel (🔗 URL button per row)
-- Add Open URL in ReportDetailDialog (🔗 URL button in action row)
-- Set Topmost=True on AppSettingsJsonDialog and ReportDetailDialog
-- Version 3.2
-
-Ref: task-2026-03-21-01
+Bổ sung task: docs\tasks\task-2026-03-22-00.md
