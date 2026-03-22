@@ -1,12 +1,1 @@
-feat(v3.4): Project Helper — dedicated tool window for .sln/.csproj management
-
-- New ProjectHelperToolWindow: type filter (All/.sln/.csproj), sort (name/date asc/desc), keyword search
-- Per-item actions: open in VS (UseShellExecute), copy path, open folder in Explorer
-- Force rescan button bypasses TTL cache; auto-load on panel open
-- SolutionFileService shared between ProjectHelper and Package (unchanged)
-- Removed all SolutionFile logic from TrackerViewModel + TrackerControl (clean separation)
-- TrackerControl: "📁 Projects" button opens Project Helper panel
-- CommandTable: Project Helper added to View>Other Windows + DH Codetask Extension menu
-- DevTaskTrackerPackage: v3.4, registers ProjectHelperToolWindow, ShowProjectHelperWindowAsync()
-
-Ref: task-2026-03-22-01
+Bổ sung: docs\tasks\task-2026-03-22-02.md
