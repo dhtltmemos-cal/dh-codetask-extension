@@ -1,3 +1,52 @@
+## 2026-03-23 - v3.10: Issue Creator Info + Connection Info Parser
+
+**Nguyên nhân:** Yêu cầu từ `docs/tasks/task-2026-03-23-02.md` — hiển thị thông tin người tạo issue và trích xuất thông tin kết nối CSDL (IP, database, port) từ body issue.
+
+### Thay đổi
+
+**`src/Core/Models/IssueConnectionInfo.cs`** — Model mới:
+- Properties: `IpServer`, `Database`, `Port`
+- Computed: `HasAny` (bool), `Summary` (string dạng `host:port/db`)
+
+**`src/Core/Services/IssueBodyParser.cs`** — Class parse body issue:
+- `Parse(body, defaultServerIp)` dùng nhiều Regex pattern ưu tiên theo thứ tự
+- IP: match keyword `ip server`, `host`, `hostname`, `máy chủ` → sau đó fallback tìm IP bất kỳ
+- Database: match keyword `ten_csdl`, `database`, `csdl`, `db`, `tên_csdl` → tên không dấu, không ký tự đặc biệt
+- Port: match keyword `port`, `port_csdl`, `port_db`, `cổng` → chỉ nhận số 1–65535
+- Fallback `DefaultServerIp` từ settings khi body không ghi rõ IP
+
+**`src/Core/Models/TaskItem.cs`** — Thêm fields:
+- `CreatedByUser` (string) — login của người tạo issue
+- `CreatedAt` (string) — ngày tạo định dạng `dd/MM/yyyy HH:mm`
+- `ConnectionInfo` (IssueConnectionInfo)
+
+**`src/Core/Models/AppSettings.cs`** — Thêm `DefaultServerIp`:
+- Dùng làm fallback IP khi body không ghi rõ
+- Ví dụ cấu hình: `"DefaultServerIp": "192.168.50.79"`
+
+**`src/Providers/TaskProviders/GiteaTaskProvider.cs`** — Bổ sung:
+- Lấy `obj["user"]["login"]` → `CreatedByUser`
+- Parse `obj["created_at"]` → `CreatedAt` (local time)
+- Gọi `IssueBodyParser.Parse(rawBody, settings.DefaultServerIp)` → `ConnectionInfo`
+
+**`src/ViewModels/TrackerViewModel.cs`** — Bổ sung:
+- Properties: `CreatedByUser`, `CreatedAt`, `HasCreatorInfo`, `ConnIpServer`, `ConnDatabase`, `ConnPort`, `HasConnInfo`
+- Commands: `CopyIpCommand`, `CopyDbCommand`, `CopyPortCommand` (delegate sang `CopyToClipboardAction`)
+- `CopyToClipboardAction` (Action&lt;string&gt;) — set bởi code-behind
+- Helper `ApplyTaskToUI(TaskItem)` — áp dụng toàn bộ task data lên UI properties
+
+**`src/ToolWindows/TrackerControl.xaml`** — Thêm 2 section:
+- Creator info (ẩn khi không có): `👤 Tạo bởi: [user]  📅 [ngày]`
+- Connection info (ẩn khi không parse được): `🖥 IP`, `🗄 DB`, `🔌 Port` — mỗi dòng có nút 📋 copy
+
+**`src/ToolWindows/TrackerControl.xaml.cs`** — Wire `CopyToClipboardAction` → `Clipboard.SetText()`
+
+**`src/DhCodetaskExtension.csproj`** — Thêm 2 Compile entry mới
+
+**Version bump:** 3.9 → 3.10
+
+---
+
 ## 2026-03-23 - v3.9: Cập nhật tự động qua VSIX Gallery + GitHub Actions
 
 **Nguyên nhân:** Yêu cầu từ `docs/tasks/task-2026-03-23-01.md` — dùng cơ chế `GalleryUrl` tích hợp sẵn của VS2017 (đúng chuẩn VSIX), không tự viết HTTP client.
@@ -25,59 +74,15 @@
 
 ---
 
+## 2026-03-22 - v3.8: Fix TodoTemplates + TODO Start gated by parent task state
+
+**Version bump:** 3.7 → 3.8
+
 ## 2026-03-22 - v3.7: Fix ripgrep logging; fix Checksum canonical form; fix History refresh; fix TODO button states; fix TodoTemplate UX
-
-**Nguyên nhân:** Yêu cầu từ `docs/tasks/task-2026-03-22-04.md`
-
-### Fix 1 — ripgrep: Log đầy đủ + fix RelativePath
-
-**Files:** `src/ViewModels/ProjectHelperViewModel.cs`
-
-- `SearchContentAsync()`: log command, path, thư mục, thời gian thực thi trước/sau search
-- `ParseRipgrepOutput()`: đọc stderr trên thread riêng, log toàn bộ stderr ra Output Window, log exit code
-- Thêm `--` separator trước pattern để pattern bắt đầu bằng `-` không bị parse là flag
-- Fix `RelativePath` trong `RipgrepSearchResult`: tính đúng bằng cách strip root prefix thay vì gán `psi.Arguments`
-
-### Fix 2 — Task History refresh: force cache invalidation
-
-**Files:** `src/Core/Services/HistoryQueryService.cs`, `src/ViewModels/HistoryViewModel.cs`, `src/ToolWindows/HistoryControl.xaml.cs`, `src/DevTaskTrackerPackage.cs`
-
-- `HistoryQueryService`: thêm `InvalidateCache()` method, thêm `_watcher.Changed` event
-- `HistoryViewModel`: thêm `_invalidateCache` Action (injected từ package); `RefreshAsync(forceInvalidate)` gọi invalidate trước khi query
-- `HistoryControl.BtnRefresh_Click`: gọi `RefreshAsync(forceInvalidate: true)` thay vì `RefreshAsync()`
-- `DevTaskTrackerPackage`: truyền `() => _historyRepo.InvalidateCache()` vào HistoryViewModel constructor
-
-### Fix 3 — Checksum: canonical JSON form
-
-**Files:** `src/Providers/StorageProviders/JsonStorageService.cs`
-
-Root cause: Archive dùng `JsonConvert.Serialize(report)` (output có thể chứa `"Checksum": null`) rồi compute hash; còn verify dùng `JObject.Remove("Checksum") → ToString()` → hai chuỗi khác nhau → hash khác nhau → báo tampered sai.
-
-Fix: `ArchiveReportAsync` dùng cùng JObject round-trip:
-```
-Serialize(report) → JObject.Parse → Remove("Checksum") → ToString() → hash
-```
-
-### Fix 4 — TODO buttons: CanExecuteChanged
-
-**File:** `src/ViewModels/TodoItemViewModel.cs`
-
-`RaiseStateChanged()` nay gọi thêm `RaiseCanExecuteChanged()` cho Start/Pause/Stop/Complete commands.
-
-### Fix 5 — TodoTemplate: set text + enable Add button
-
-**File:** `src/ViewModels/TrackerViewModel.cs`
-
-- `NewTodoText` setter: raise `AddTodoCommand.CanExecuteChanged()` → nút Add tự enable khi có text
-- `AddTodoFromTemplateCommand`: đổi từ auto-add thành chỉ set `NewTodoText = t` → user review text trước khi click Add
 
 **Version bump:** 3.6 → 3.7
 
----
-
 ## 2026-03-22 - Project Helper: panel chuyên biệt quản lý .sln và .csproj
-
-**Nguyên nhân:** Yêu cầu từ `docs/tasks/task-2026-03-22-01.md` — tách nghiệp vụ list file ra khỏi Tracker panel, tạo tool window riêng `Project Helper` với filter, sort, open VS, copy path.
 
 **Version bump:** 3.3 → 3.4
 
@@ -107,19 +112,9 @@ Serialize(report) → JObject.Parse → Remove("Checksum") → ToString() → ha
 
 ## 2026-03-21 - Sửa lỗi build CS8314 pattern matching generic type C# 7.0
 
-## 2026-03-21 - Sửa warning VSTHRD103 sync block ManualTaskProvider
-
-## 2026-03-21 - Sửa warning VSTHRD101 async lambda trên void delegate
-
-## 2026-03-21 - Sửa lỗi runtime tool window hiển thị "Working on it..."
-
-## 2026-03-21 - Sửa lỗi runtime InvalidOperationException WPF binding TwoWay trên readonly property
+## 2026-03-21 - Loại bỏ Settings form, chỉ giữ Settings JSON
 
 ## 2026-03-21 - Thêm AppLogger: ghi log đồng thời ra file và VS Output Window
-
-## 2026-03-21 - Loại bỏ Settings form, chỉ giữ Settings JSON: AppSettingsJsonDialog + logging + Open Log/Config buttons
-
-## 2026-03-21 - Sửa lỗi NullReferenceException trong HistoryControl Filter_Week
 
 ## 2026-03-21 - Thêm tính năng Resume task từ lịch sử
 

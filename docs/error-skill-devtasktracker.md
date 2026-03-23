@@ -168,6 +168,18 @@ Chỉ liệt kê lỗi cần tránh. Không lặp lại cùng một lỗi ở nh
 | `string interpolation` dạng `$"..."` | OK — C# 6      | (cho phép)                           |
 | `?.` null-conditional                | OK — C# 6      | (cho phép)                           |
 
+## 16) Tránh lỗi CS1026
+
+```
+⚠ Lỗi thường gặp — CS1026
+Không dùng "smart quotes" trong C#
+❌ Sai
+"Dang tim: "{0}"..."
+✅ Đúng
+"Dang tim: \"{0}\"..."
+Ký tự " " (curly/smart quote) là Unicode — C# không nhận. Chỉ dùng \" để escape dấu ngoặc kép bên trong string.
+```
+
 ### Quy tắc kiểm tra trước khi sinh code
 
 1. Mỗi method trả về nhiều giá trị → **phải dùng class kết quả riêng**, không dùng tuple.

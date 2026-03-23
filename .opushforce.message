@@ -1,1 +1,10 @@
-Bổ sung: docs\tasks\task-2026-03-23-02.md
+feat: v3.10 — Hiển thị thông tin creator và trích xuất IP/DB/Port từ body issue
+
+- GiteaTaskProvider: lấy user.login và created_at từ Gitea API response
+- IssueBodyParser: class mới trích xuất IP, database, port từ raw body bằng regex
+- IssueConnectionInfo: model lưu thông tin kết nối trích xuất được
+- TaskItem: thêm CreatedByUser, CreatedAt, ConnectionInfo
+- AppSettings: thêm DefaultServerIp (fallback khi body không ghi rõ IP)
+- TrackerViewModel: expose properties và copy commands cho connection info
+- TrackerControl.xaml: thêm section hiển thị creator + connection info với nút copy
+- TrackerControl.xaml.cs: wire CopyToClipboardAction từ ViewModel

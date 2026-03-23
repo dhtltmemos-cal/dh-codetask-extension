@@ -1,3 +1,23 @@
+## 2026-03-23 14:00 — v3.10: Hiển thị thông tin creator và trích xuất kết nối từ body issue
+
+**Yêu cầu:** Sau khi Fetch issue từ Gitea, hiển thị thêm `username create`, `date create`; trích xuất IP server, tên database, port từ body issue bằng regex/string matching; thêm control hiển thị và nút copy.
+
+**Nguyên nhân / Mục đích:** Các task của nhóm thường chứa thông tin kết nối CSDL ngay trong body issue (được nhập tay theo nhiều format khác nhau). Cần parse và hiển thị nhanh để dev không cần mở trình duyệt tìm lại.
+
+**Thay đổi:**
+
+- `src/Core/Models/IssueConnectionInfo.cs` — Model mới lưu IP/Database/Port; có `HasAny`, `Summary`
+- `src/Core/Services/IssueBodyParser.cs` — Parse body bằng nhiều regex pattern, hỗ trợ keyword: ip server, csdl, ten_csdl, db, database, port, port_csdl, máy chủ, cổng...; fallback DefaultServerIp
+- `src/Core/Models/TaskItem.cs` — Thêm `CreatedByUser`, `CreatedAt`, `ConnectionInfo`
+- `src/Core/Models/AppSettings.cs` — Thêm `DefaultServerIp` (IP mặc định của nhóm)
+- `src/Providers/TaskProviders/GiteaTaskProvider.cs` — Lấy `user.login`, `created_at` từ Gitea API; gọi `IssueBodyParser.Parse(rawBody, defaultServerIp)`
+- `src/ViewModels/TrackerViewModel.cs` — Thêm properties `CreatedByUser`, `CreatedAt`, `HasCreatorInfo`, `ConnIpServer`, `ConnDatabase`, `ConnPort`, `HasConnInfo`; thêm `CopyIpCommand`, `CopyDbCommand`, `CopyPortCommand`; refactor `ApplyTaskToUI()`
+- `src/ToolWindows/TrackerControl.xaml` — Section creator info (👤 tạo bởi + 📅 ngày tạo) và section 🔌 Thông tin kết nối (IP/DB/Port) với nút 📋 copy, ẩn khi không có dữ liệu
+- `src/ToolWindows/TrackerControl.xaml.cs` — Wire `CopyToClipboardAction` → `Clipboard.SetText()`
+- `src/DhCodetaskExtension.csproj` — Thêm `IssueConnectionInfo.cs` và `IssueBodyParser.cs`
+
+---
+
 ## 2026-03-23 10:30 — v3.9: Cập nhật tự động qua VSIX Gallery của Visual Studio
 
 **Yêu cầu:** Dùng cơ chế cập nhật tích hợp sẵn của Visual Studio — không tự viết HTTP client.
@@ -20,42 +40,6 @@
 `.github/workflows/release.js` — toàn bộ logic: patch-version, prepare-assets, update-feed
 
 **Version bump:** 3.8 → 3.9
-
-## 2026-03-23 10:30 — v3.9: Cập nhật tự động qua cơ chế VSIX Gallery của Visual Studio
-
-**Yêu cầu:** Dùng cơ chế cập nhật tích hợp sẵn của Visual Studio thay vì tự viết HTTP client.
-
-**Cách hoạt động:**
-
-- Extension khai báo `<GalleryUrl>` trong `source.extension.vsixmanifest`
-- VS tự kiểm tra feed này qua **Tools > Extensions and Updates > Updates**
-- VS tự tải và cài VSIX mới — không cần code bổ sung trong extension
-
-**Triển khai:**
-
-**1. `src/source.extension.vsixmanifest`** — thêm `<GalleryUrl>`:
-
-```xml
-<GalleryUrl>https://YOUR_GITHUB_USERNAME.github.io/dh-codetask-extension/vsixfeed.xml</GalleryUrl>
-```
-
-**2. `docs/vsixfeed.xml`** — Atom feed chuẩn VSIX Gallery Schema, host trên GitHub Pages:
-
-- VS đọc format Atom feed với namespace `http://schemas.microsoft.com/developer/vsx-syndication-schema/2010`
-- Mỗi entry chứa `<Vsix>` với Id, Version, và `<content src="URL_VSIX_FILE"/>`
-
-**3. `.github/workflows/release.yml`** — GitHub Actions tự động:
-
-- Trigger: push tag `v*.*.*`
-- Patch version vào `AssemblyInfo.cs` và `vsixmanifest`
-- Build VSIX với MSBuild + NuGet
-- Tạo GitHub Release + upload .vsix
-- Cập nhật `docs/vsixfeed.xml` với version và download URL mới
-- Commit feed vào repo (VS Pages phục vụ tự động)
-
-**4. `src/DevTaskTrackerPackage.cs`** — log hướng dẫn khi khởi động:
-
-- "Kiểm tra bản mới: Tools > Extensions and Updates > Updates"
 
 ## 2026-03-22 18:30 — v3.8: Fix TodoTemplates hiển thị + TODO chỉ chạy khi task cha Running
 
@@ -87,4 +71,3 @@ Kết quả: Task Running → ▶ enable; Task Paused/Stopped/Idle → ▶ disab
 Files: `src/ViewModels/TodoItemViewModel.cs`, `src/ViewModels/TrackerViewModel.cs`
 
 **Version bump:** 3.7 → 3.8
-

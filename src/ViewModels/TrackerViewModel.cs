@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -42,6 +43,14 @@ namespace DhCodetaskExtension.ViewModels
         private string _newTodoText      = string.Empty;
         private TaskItem _currentTask;
 
+        // ── v3.10: Creator + Connection Info ─────────────────────────────
+        private string _createdByUser   = string.Empty;
+        private string _createdAt       = string.Empty;
+        private string _connIpServer    = string.Empty;
+        private string _connDatabase    = string.Empty;
+        private string _connPort        = string.Empty;
+        private bool   _hasConnInfo;
+
         public string TaskUrl         { get => _taskUrl;         set { _taskUrl         = value; OnProp(nameof(TaskUrl)); } }
         public string StatusMessage   { get => _statusMessage;   set { _statusMessage   = value; OnProp(nameof(StatusMessage)); } }
         public bool   IsFetching      { get => _isFetching;      set { _isFetching      = value; OnProp(nameof(IsFetching)); } }
@@ -52,6 +61,67 @@ namespace DhCodetaskExtension.ViewModels
         public string BusinessLogic   { get => _businessLogic;   set { _businessLogic   = value; OnProp(nameof(BusinessLogic)); } }
         public string CommitMessage   { get => _commitMessage;   set { _commitMessage   = value; OnProp(nameof(CommitMessage)); } }
         public string TimerDisplay    { get => _timerDisplay;    set { _timerDisplay    = value; OnProp(nameof(TimerDisplay)); } }
+
+        // ── v3.10 properties ──────────────────────────────────────────────
+
+        public string CreatedByUser
+        {
+            get => _createdByUser;
+            set { _createdByUser = value; OnProp(nameof(CreatedByUser)); OnProp(nameof(HasCreatorInfo)); }
+        }
+
+        public string CreatedAt
+        {
+            get => _createdAt;
+            set { _createdAt = value; OnProp(nameof(CreatedAt)); OnProp(nameof(HasCreatorInfo)); }
+        }
+
+        public bool HasCreatorInfo =>
+            !string.IsNullOrEmpty(_createdByUser) || !string.IsNullOrEmpty(_createdAt);
+
+        public string ConnIpServer
+        {
+            get => _connIpServer;
+            set { _connIpServer = value; OnProp(nameof(ConnIpServer)); RefreshHasConnInfo(); }
+        }
+
+        public string ConnDatabase
+        {
+            get => _connDatabase;
+            set { _connDatabase = value; OnProp(nameof(ConnDatabase)); RefreshHasConnInfo(); }
+        }
+
+        public string ConnPort
+        {
+            get => _connPort;
+            set { _connPort = value; OnProp(nameof(ConnPort)); RefreshHasConnInfo(); }
+        }
+
+        public bool HasConnInfo
+        {
+            get => _hasConnInfo;
+            private set { _hasConnInfo = value; OnProp(nameof(HasConnInfo)); }
+        }
+
+        // v3.10: per-field bool for Visibility binding (BooleanToVisibilityConverter needs bool, not string)
+        public bool HasConnIpServer => !string.IsNullOrEmpty(_connIpServer);
+        public bool HasConnDatabase  => !string.IsNullOrEmpty(_connDatabase);
+        public bool HasConnPort      => !string.IsNullOrEmpty(_connPort);
+
+        private void RefreshHasConnInfo()
+        {
+            HasConnInfo = !string.IsNullOrEmpty(_connIpServer) ||
+                          !string.IsNullOrEmpty(_connDatabase) ||
+                          !string.IsNullOrEmpty(_connPort);
+            OnProp(nameof(HasConnIpServer));
+            OnProp(nameof(HasConnDatabase));
+            OnProp(nameof(HasConnPort));
+        }
+
+        // ── Commands for copy (v3.10) ─────────────────────────────────────
+        public ICommand CopyIpCommand   { get; }
+        public ICommand CopyDbCommand   { get; }
+        public ICommand CopyPortCommand { get; }
 
         /// <summary>
         /// When TimerState changes, three things must happen:
@@ -67,7 +137,6 @@ namespace DhCodetaskExtension.ViewModels
                 _timerState = value;
                 OnProp(nameof(TimerState));
                 RaiseCommandsChanged();
-                // v3.8: refresh all todo items so Start button enables/disables correctly
                 RefreshTodoParentStateCommands();
             }
         }
@@ -88,10 +157,6 @@ namespace DhCodetaskExtension.ViewModels
         public ObservableCollection<TodoItemViewModel> Todos         { get; } = new ObservableCollection<TodoItemViewModel>();
         public ObservableCollection<string>            TodoTemplates { get; } = new ObservableCollection<string>();
 
-        /// <summary>
-        /// v3.8: BooleanToVisibilityConverter requires a bool, not an int (Count).
-        /// Bind Expander.Visibility to this instead of TodoTemplates.Count.
-        /// </summary>
         public bool HasTodoTemplates => TodoTemplates.Count > 0;
 
         public int    TodoTotal   => Todos.Count;
@@ -129,6 +194,9 @@ namespace DhCodetaskExtension.ViewModels
         public Action OpenProjectHelperAction  { get; set; }
         public Func<string> ShowPauseReasonDialog { get; set; }
 
+        // ── Clipboard action (injected by UI layer) ───────────────────────
+        public Action<string> CopyToClipboardAction { get; set; }
+
         public TrackerViewModel(
             IEventBus eventBus, IStorageService storage, IGitService git,
             IReportGenerator reportGenerator, TimeTrackingService timer,
@@ -153,8 +221,6 @@ namespace DhCodetaskExtension.ViewModels
             PushAndCompleteCommand  = new RelayCommand(PushAndCompleteFireAndForget);
             SaveAndPauseCommand     = new RelayCommand(SaveAndPauseFireAndForget);
 
-            // v3.8: Template button fills input box; user reviews then clicks Add.
-            // NewTodoText setter raises AddTodoCommand.CanExecuteChanged automatically.
             AddTodoFromTemplateCommand = new RelayCommand<string>(t =>
             {
                 if (!string.IsNullOrWhiteSpace(t))
@@ -163,6 +229,11 @@ namespace DhCodetaskExtension.ViewModels
                     _log("[Tracker] 📋 TODO template selected: " + t);
                 }
             });
+
+            // v3.10: copy commands delegate to CopyToClipboardAction (set by code-behind)
+            CopyIpCommand   = new RelayCommand(() => CopyToClipboardAction?.Invoke(ConnIpServer),  () => !string.IsNullOrEmpty(ConnIpServer));
+            CopyDbCommand   = new RelayCommand(() => CopyToClipboardAction?.Invoke(ConnDatabase),  () => !string.IsNullOrEmpty(ConnDatabase));
+            CopyPortCommand = new RelayCommand(() => CopyToClipboardAction?.Invoke(ConnPort),      () => !string.IsNullOrEmpty(ConnPort));
 
             GitAvailable = _git?.IsAvailable() ?? false;
             _log(string.Format("[Tracker] Git available: {0}", GitAvailable));
@@ -188,7 +259,11 @@ namespace DhCodetaskExtension.ViewModels
             try
             {
                 var normalizedUrl = NormalizeIssueUrl(TaskUrl);
-                if (LoadAllHistoryFunc != null)
+
+                // Always fetch from Gitea API to get full info (creator, connection info).
+                // If API fails, fall back to history cache.
+                var result = await FetchTaskFunc(TaskUrl);
+                if (!result.Success && LoadAllHistoryFunc != null)
                 {
                     try
                     {
@@ -197,40 +272,33 @@ namespace DhCodetaskExtension.ViewModels
                             NormalizeIssueUrl(r.TaskUrl ?? string.Empty) == normalizedUrl);
                         if (match != null && !string.IsNullOrEmpty(match.TaskTitle))
                         {
-                            _currentTask    = new TaskItem
+                            result = TaskFetchResult.Ok(new TaskItem
                             {
-                                Id          = match.TaskId          ?? string.Empty,
-                                Title       = match.TaskTitle        ?? string.Empty,
-                                Description = match.Description      ?? string.Empty,
-                                Labels      = match.Labels           ?? new string[0],
-                                Url         = match.TaskUrl          ?? TaskUrl
-                            };
-                            TaskTitle       = _currentTask.Title;
-                            TaskDescription = _currentTask.Description;
-                            TaskUrl         = _currentTask.Url;
-                            LabelsDisplay   = string.Join(", ", _currentTask.Labels);
-                            RegenerateCommit();
-                            StatusMessage = string.Format("📚 Lấy từ lịch sử #{0}: {1}", _currentTask.Id, _currentTask.Title);
-                            _log(string.Format("[Tracker] 📚 Loaded from history #{0}: {1}", _currentTask.Id, _currentTask.Title));
-                            _eventBus.Publish(new TaskFetchedEvent { Task = _currentTask, Url = TaskUrl });
-                            DetectRepoRoot();
-                            IsFetching = false;
-                            return;
+                                Id             = match.TaskId    ?? string.Empty,
+                                Title          = match.TaskTitle ?? string.Empty,
+                                Description    = match.Description ?? string.Empty,
+                                Labels         = match.Labels    ?? new string[0],
+                                Url            = match.TaskUrl   ?? TaskUrl,
+                                ConnectionInfo = new IssueConnectionInfo()
+                            });
+                            StatusMessage = string.Format("📚 Fallback lịch sử #{0}: {1}", match.TaskId, match.TaskTitle);
+                            _log(string.Format("[Tracker] 📚 API failed, using history #{0}", match.TaskId));
                         }
                     }
                     catch { /* non-critical */ }
                 }
-
-                var result = await FetchTaskFunc(TaskUrl);
                 if (result.Success)
                 {
-                    _currentTask    = result.Task;
-                    TaskTitle       = result.Task.Title;
-                    TaskDescription = result.Task.Description;
-                    LabelsDisplay   = string.Join(", ", result.Task.Labels ?? new string[0]);
+                    _currentTask = result.Task;
+                    ApplyTaskToUI(_currentTask);
                     RegenerateCommit();
                     StatusMessage = string.Format("✅ Fetched #{0}: {1}", result.Task.Id, result.Task.Title);
                     _log(string.Format("[Tracker] ✅ Fetch OK — #{0}: {1}", result.Task.Id, result.Task.Title));
+                    if (result.Task.ConnectionInfo != null && result.Task.ConnectionInfo.HasAny)
+                        _log(string.Format("[Tracker] 🔌 Connection: IP={0}, DB={1}, Port={2}",
+                            result.Task.ConnectionInfo.IpServer,
+                            result.Task.ConnectionInfo.Database,
+                            result.Task.ConnectionInfo.Port));
                     _eventBus.Publish(new TaskFetchedEvent { Task = result.Task, Url = TaskUrl });
                     DetectRepoRoot();
                 }
@@ -248,6 +316,29 @@ namespace DhCodetaskExtension.ViewModels
             finally { IsFetching = false; }
         }
 
+        /// <summary>v3.10: Áp dụng dữ liệu task lên UI properties.</summary>
+        private void ApplyTaskToUI(TaskItem task)
+        {
+            if (task == null) return;
+            TaskTitle       = task.Title;
+            TaskDescription = task.Description;
+            TaskUrl         = task.Url;
+            LabelsDisplay   = string.Join(", ", task.Labels ?? new string[0]);
+
+            // Creator info
+            CreatedByUser = task.CreatedByUser ?? string.Empty;
+            CreatedAt     = task.CreatedAt ?? string.Empty;
+
+            // Connection info
+            var ci = task.ConnectionInfo ?? new IssueConnectionInfo();
+            ConnIpServer = ci.IpServer ?? string.Empty;
+            ConnDatabase = ci.Database ?? string.Empty;
+            ConnPort     = ci.Port ?? string.Empty;
+            (CopyIpCommand   as RelayCommand)?.RaiseCanExecuteChanged();
+            (CopyDbCommand   as RelayCommand)?.RaiseCanExecuteChanged();
+            (CopyPortCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
         private static string NormalizeIssueUrl(string url)
         {
             if (string.IsNullOrEmpty(url)) return string.Empty;
@@ -261,6 +352,8 @@ namespace DhCodetaskExtension.ViewModels
             _currentTask = null;
             TaskUrl = TaskTitle = TaskDescription = LabelsDisplay = string.Empty;
             WorkNotes = BusinessLogic = CommitMessage = string.Empty;
+            CreatedByUser = CreatedAt = string.Empty;
+            ConnIpServer = ConnDatabase = ConnPort = string.Empty;
             Todos.Clear();
             _timer.Reset();
             TimerState    = "Idle";
@@ -273,7 +366,7 @@ namespace DhCodetaskExtension.ViewModels
         {
             if (TimerState == "Idle")         _timer.Start();
             else if (TimerState == "Paused")  _timer.Resume();
-            TimerState = "Running";   // setter refreshes todo CanStart
+            TimerState = "Running";
             _log(string.Format("[Tracker] ▶ Task started/resumed: \"{0}\"", TaskTitle));
             _eventBus.Publish(new TaskStartedEvent { StartTime = DateTime.Now });
         }
@@ -288,7 +381,7 @@ namespace DhCodetaskExtension.ViewModels
             }
             foreach (var t in Todos) t.AutoPause();
             _timer.Pause(reason);
-            TimerState = "Paused";    // setter refreshes todo CanStart → Start buttons disable
+            TimerState = "Paused";
             _log(string.Format("[Tracker] ⏸ Task paused — reason: {0} — elapsed: {1}",
                 string.IsNullOrEmpty(reason) ? "(none)" : reason,
                 FormatSpan(_timer.GetElapsed())));
@@ -299,7 +392,7 @@ namespace DhCodetaskExtension.ViewModels
         private void ResumeTask()
         {
             _timer.Resume();
-            TimerState = "Running";   // setter refreshes todo CanStart → Start buttons enable
+            TimerState = "Running";
             _log("[Tracker] ▶ Task resumed");
             _eventBus.Publish(new TaskResumedEvent());
         }
@@ -308,7 +401,7 @@ namespace DhCodetaskExtension.ViewModels
         {
             foreach (var t in Todos) t.AutoPause();
             _timer.Stop();
-            TimerState = "Stopped";   // setter refreshes todo CanStart → Start buttons disable
+            TimerState = "Stopped";
             _log(string.Format("[Tracker] ⏹ Task stopped — total: {0}", FormatSpan(_timer.GetElapsed())));
         }
 
@@ -326,7 +419,6 @@ namespace DhCodetaskExtension.ViewModels
 
         private TodoItemViewModel CreateTodoVm(TodoItem item)
         {
-            // v3.8: pass parent running predicate so CanStart is gated by task state
             var vm = new TodoItemViewModel(
                 item, _eventBus, _currentTask?.Id ?? string.Empty,
                 isParentRunning: () => TimerState == "Running");
@@ -341,10 +433,6 @@ namespace DhCodetaskExtension.ViewModels
             return vm;
         }
 
-        /// <summary>
-        /// v3.8: Called whenever TimerState changes so every todo item refreshes its
-        /// Start button enabled state based on the new parent task state.
-        /// </summary>
         private void RefreshTodoParentStateCommands()
         {
             foreach (var vm in Todos)
@@ -374,8 +462,22 @@ namespace DhCodetaskExtension.ViewModels
                 push ? "🚀 Push & Complete" : "⏸ Save & Pause", TaskTitle));
 
             foreach (var t in Todos) t.AutoPause();
-            var sessions    = _timer.Stop();
-            TimerState      = "Stopped";
+
+            // Fix #5: Save & Pause uses Pause(), not Stop() — preserves semantics.
+            // Push & Complete uses Stop() to finalize. Both snapshot sessions for report.
+            List<TimeSession> sessions;
+            if (push)
+            {
+                sessions = _timer.Stop();
+                TimerState = "Stopped";
+            }
+            else
+            {
+                // Pause: finalize current session into list, but keep state as Paused
+                _timer.Pause();
+                sessions = _timer.GetSessions();
+                TimerState = "Paused";
+            }
             var completedAt = DateTime.Now;
             var s           = _settings();
             string branch   = "unknown";
@@ -452,7 +554,7 @@ namespace DhCodetaskExtension.ViewModels
             var templates = _settings().TodoTemplates;
             if (templates != null)
                 foreach (var t in templates) TodoTemplates.Add(t);
-            OnProp(nameof(HasTodoTemplates));   // v3.8: update Expander visibility
+            OnProp(nameof(HasTodoTemplates));
         }
 
         // ── Auto-save ─────────────────────────────────────────────────────
@@ -480,10 +582,13 @@ namespace DhCodetaskExtension.ViewModels
         private WorkLog BuildWorkLog()
         {
             if (_currentTask == null && string.IsNullOrEmpty(TaskTitle)) return null;
+            // Fix #6: include snapshot of the currently-running session so autosave
+            // captures all elapsed time even if VS crashes before next pause/stop.
+            var sessions = _timer.GetSessionsWithCurrentSnapshot();
             return new WorkLog
             {
                 Task          = _currentTask,
-                Sessions      = _timer.GetSessions(),
+                Sessions      = sessions,
                 Todos         = Todos.Select(v => v.Model).ToList(),
                 WorkNotes     = WorkNotes,
                 BusinessLogic = BusinessLogic,
@@ -500,10 +605,7 @@ namespace DhCodetaskExtension.ViewModels
             _currentTask = log.Task;
             if (log.Task != null)
             {
-                TaskTitle       = log.Task.Title;
-                TaskDescription = log.Task.Description;
-                TaskUrl         = log.Task.Url;
-                LabelsDisplay   = string.Join(", ", log.Task.Labels ?? new string[0]);
+                ApplyTaskToUI(log.Task);
             }
             WorkNotes     = log.WorkNotes;
             BusinessLogic = log.BusinessLogic;
@@ -511,7 +613,7 @@ namespace DhCodetaskExtension.ViewModels
             _repoRoot     = log.RepoRoot ?? string.Empty;
 
             _timer.RestoreFrom(log.Sessions, TrackingState.Paused);
-            TimerState = "Paused";  // setter refreshes todo CanStart
+            TimerState = "Paused";
 
             Todos.Clear();
             foreach (var t in (log.Todos ?? new System.Collections.Generic.List<TodoItem>()))

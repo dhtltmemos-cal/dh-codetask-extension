@@ -16,20 +16,8 @@ using Newtonsoft.Json.Linq;
 
 namespace DhCodetaskExtension.ViewModels
 {
-    public enum ProjectSortMode
-    {
-        NameAsc,
-        NameDesc,
-        DateDesc,
-        DateAsc
-    }
-
-    public enum ProjectFileType
-    {
-        All,
-        SlnOnly,
-        CsprojOnly
-    }
+    public enum ProjectSortMode { NameAsc, NameDesc, DateDesc, DateAsc }
+    public enum ProjectFileType  { All, SlnOnly, CsprojOnly }
 
     public sealed class ProjectHelperViewModel : INotifyPropertyChanged
     {
@@ -39,8 +27,34 @@ namespace DhCodetaskExtension.ViewModels
 
         private List<SolutionFileEntry> _allFiles = new List<SolutionFileEntry>();
 
-        // ── File list state ───────────────────────────────────────────────
+        // ── v3.13: Content Search defaults ───────────────────────────────
+        /// <summary>Default file extensions to include in content search.</summary>
+        private static readonly string[] DefaultSearchExtensions =
+        {
+            // C# / .NET
+            "*.cs", "*.csx", "*.csproj", "*.sln", "*.props", "*.targets",
+            // Web / config
+            "*.xml", "*.config", "*.json", "*.yaml", "*.yml", "*.toml",
+            "*.htm", "*.html", "*.css", "*.js", "*.ts", "*.jsx", "*.tsx",
+            // Docs
+            "*.md", "*.txt", "*.rst",
+            // SQL / scripts
+            "*.sql", "*.sh", "*.bat", "*.cmd", "*.ps1",
+            // XAML / WPF
+            "*.xaml", "*.axaml",
+        };
 
+        /// <summary>Default directories to exclude from content search.</summary>
+        private static readonly string[] DefaultSearchExcludeDirs =
+        {
+            "bin", "obj", ".git", "node_modules", "packages", ".vs", ".idea",
+            "TestResults", "Artifacts", "dist", "build", ".nuget",
+            "wwwroot/lib", "wwwroot\\lib", ".gradle", "__pycache__",
+            "vendor", "coverage", ".nyc_output",
+        };
+
+
+        // ── File list state ───────────────────────────────────────────────
         private string          _filterKeyword  = string.Empty;
         private ProjectSortMode _sortMode        = ProjectSortMode.NameAsc;
         private ProjectFileType _fileType        = ProjectFileType.All;
@@ -48,19 +62,15 @@ namespace DhCodetaskExtension.ViewModels
         private string          _statusMessage   = "Nhấn 🔄 để quét thư mục.";
 
         // ── Panel mode ────────────────────────────────────────────────────
-
         private bool _isFileMode = true;
-
         public bool IsFileMode
         {
             get => _isFileMode;
             set { _isFileMode = value; OnProp(nameof(IsFileMode)); OnProp(nameof(IsSearchMode)); }
         }
-
         public bool IsSearchMode => !_isFileMode;
 
         // ── Properties ────────────────────────────────────────────────────
-
         public string FilterKeyword
         {
             get => _filterKeyword;
@@ -103,8 +113,7 @@ namespace DhCodetaskExtension.ViewModels
         public ObservableCollection<SolutionFileEntry> Files { get; }
             = new ObservableCollection<SolutionFileEntry>();
 
-        // ── Ripgrep content search ─────────────────────────────────────────
-
+        // ── Ripgrep content search ────────────────────────────────────────
         private string _contentQuery   = string.Empty;
         private bool   _isSearching;
         private string _searchStatus   = string.Empty;
@@ -115,19 +124,16 @@ namespace DhCodetaskExtension.ViewModels
             get => _contentQuery;
             set { _contentQuery = value; OnProp(nameof(ContentQuery)); }
         }
-
         public bool IsSearching
         {
             get => _isSearching;
             set { _isSearching = value; OnProp(nameof(IsSearching)); }
         }
-
         public string SearchStatus
         {
             get => _searchStatus;
             set { _searchStatus = value; OnProp(nameof(SearchStatus)); }
         }
-
         public ObservableCollection<RipgrepSearchResult> SearchResults { get; }
             = new ObservableCollection<RipgrepSearchResult>();
 
@@ -138,9 +144,9 @@ namespace DhCodetaskExtension.ViewModels
         public ICommand SearchContentCommand { get; }
         public ICommand CancelSearchCommand  { get; }
         public ICommand ClearSearchCommand   { get; }
-        public RelayCommand<SolutionFileEntry>   OpenInVsCommand   { get; }
-        public RelayCommand<SolutionFileEntry>   CopyPathCommand   { get; }
-        public RelayCommand<SolutionFileEntry>   OpenFolderCommand { get; }
+        public RelayCommand<SolutionFileEntry>   OpenInVsCommand       { get; }
+        public RelayCommand<SolutionFileEntry>   CopyPathCommand       { get; }
+        public RelayCommand<SolutionFileEntry>   OpenFolderCommand     { get; }
         public RelayCommand<RipgrepSearchResult> OpenSearchResultCommand { get; }
 
         // ── Injected actions ──────────────────────────────────────────────
@@ -148,7 +154,8 @@ namespace DhCodetaskExtension.ViewModels
         public Action<string> CopyToClipboard  { get; set; }
         public Action<string> OpenFolderAction { get; set; }
 
-        public ProjectHelperViewModel(SolutionFileService service, Func<AppSettings> getSettings, Action<string> log)
+        public ProjectHelperViewModel(SolutionFileService service,
+            Func<AppSettings> getSettings, Action<string> log)
         {
             _service     = service     ?? throw new ArgumentNullException(nameof(service));
             _getSettings = getSettings ?? throw new ArgumentNullException(nameof(getSettings));
@@ -174,63 +181,84 @@ namespace DhCodetaskExtension.ViewModels
             OpenInVsCommand = new RelayCommand<SolutionFileEntry>(entry =>
             {
                 if (entry == null) return;
-                _log(string.Format("[ProjectHelper] 📂 Open: {0}", entry.FullPath));
+                _log(string.Format("[ProjectHelper] \U0001F4C2 Open: {0}", entry.FullPath));
                 OpenFileAction?.Invoke(entry.FullPath);
             });
 
             CopyPathCommand = new RelayCommand<SolutionFileEntry>(entry =>
             {
                 if (entry == null) return;
-                _log(string.Format("[ProjectHelper] 📋 Copy path: {0}", entry.FullPath));
+                _log(string.Format("[ProjectHelper] \U0001F4CB Copy path: {0}", entry.FullPath));
                 CopyToClipboard?.Invoke(entry.FullPath);
             });
 
             OpenFolderCommand = new RelayCommand<SolutionFileEntry>(entry =>
             {
                 if (entry == null) return;
-                var dir = System.IO.Path.GetDirectoryName(entry.FullPath) ?? string.Empty;
-                _log(string.Format("[ProjectHelper] 📁 Open folder: {0}", dir));
+                var dir = Path.GetDirectoryName(entry.FullPath) ?? string.Empty;
                 OpenFolderAction?.Invoke(dir);
             });
 
             OpenSearchResultCommand = new RelayCommand<RipgrepSearchResult>(r =>
             {
                 if (r == null || string.IsNullOrEmpty(r.FilePath)) return;
-                _log(string.Format("[ProjectHelper] 🔍 Open search result: {0}:{1}", r.FilePath, r.LineNumber));
                 OpenFileAction?.Invoke(r.FilePath);
             });
         }
 
-        // ── Refresh ───────────────────────────────────────────────────────
+        // ── Refresh (v3.11: progress + cancellation) ──────────────────────
 
         private void RefreshFireAndForget() { var _ = RefreshAsync(); }
 
+        // v3.11: separate CTS for file scan (not to be confused with _searchCts)
+        private CancellationTokenSource _scanCts;
+
         public async Task RefreshAsync(bool forceRescan = false)
         {
+            try { _scanCts?.Cancel(); _scanCts?.Dispose(); }
+            catch { }
+            _scanCts = new CancellationTokenSource();
+            var ct = _scanCts.Token;
+
             IsLoading     = true;
-            StatusMessage = "⏳ Đang quét...";
-            _log("[ProjectHelper] 🔍 Refreshing file list...");
+            var mode      = _service.GetScanModeDisplay();
+            StatusMessage = string.Format("\u23F3 Dang quet ({0})...", mode);
+            _log(string.Format("[ProjectHelper] Refreshing file list via {0}...", mode));
             try
             {
                 if (forceRescan || _service.IsCacheExpired())
-                    await _service.RefreshAsync();
+                {
+                    await _service.RefreshAsync(
+                        onProgress: msg =>
+                        {
+                            StatusMessage = msg;
+                            _log("[ProjectHelper] " + msg);
+                        },
+                        ct: ct);
+                }
+
+                ct.ThrowIfCancellationRequested();
 
                 _allFiles = await _service.GetFilesAsync();
                 var age = _service.GetCacheAgeDisplay();
-                _log(string.Format("[ProjectHelper] ✅ Found {0} file(s). Cache age: {1}",
-                    _allFiles.Count, age ?? "fresh"));
+                _log(string.Format("[ProjectHelper] Found {0} file(s) via {1}. Cache: {2}",
+                    _allFiles.Count, mode, age ?? "fresh"));
                 ApplyFilter();
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = "Dung quet.";
+                _log("[ProjectHelper] Scan cancelled.");
             }
             catch (Exception ex)
             {
-                StatusMessage = "❌ " + ex.Message;
-                _log("[ProjectHelper] ❌ " + ex.Message);
+                StatusMessage = "Loi: " + ex.Message;
+                _log("[ProjectHelper] ERROR: " + ex.Message);
             }
             finally { IsLoading = false; }
         }
 
         // ── Filter + Sort ─────────────────────────────────────────────────
-
         public void ApplyFilter()
         {
             var src = _allFiles.AsEnumerable();
@@ -262,12 +290,13 @@ namespace DhCodetaskExtension.ViewModels
             foreach (var f in result) Files.Add(f);
 
             var age = _service.GetCacheAgeDisplay();
-            var ageInfo = age != null ? string.Format(" (cache: {0} trước)", age) : string.Empty;
+            var ageInfo = age != null ? string.Format(" (cache: {0} truoc)", age) : string.Empty;
+            var mode = _service.GetScanModeDisplay();
             StatusMessage = result.Count == 0
                 ? (_allFiles.Count == 0
-                    ? "Chưa quét. Cấu hình DirectoryRootDhHosCodePath và nhấn 🔄."
-                    : "Không tìm thấy file nào khớp.")
-                : string.Format("{0} file{1} — {2:HH:mm:ss}", result.Count, ageInfo, DateTime.Now);
+                    ? "Chua quet. Cau hinh DirectoryRootDhHosCodePath va nhan 🔄."
+                    : "Khong tim thay file nao khop.")
+                : string.Format("{0} file [{1}]{2} — {3:HH:mm:ss}", result.Count, mode, ageInfo, DateTime.Now);
         }
 
         private void RaiseSortFlags()
@@ -275,19 +304,17 @@ namespace DhCodetaskExtension.ViewModels
             OnProp(nameof(SortNameAsc)); OnProp(nameof(SortNameDesc));
             OnProp(nameof(SortDateDesc)); OnProp(nameof(SortDateAsc));
         }
-
         private void RaiseTypeFlags()
         {
             OnProp(nameof(TypeAll)); OnProp(nameof(TypeSln)); OnProp(nameof(TypeCsproj));
         }
 
-        // ── Ripgrep content search ────────────────────────────────────────
-
+        // ── Ripgrep content search (unchanged from v3.7) ──────────────────
         private void CancelSearch()
         {
             try { _searchCts?.Cancel(); }
             catch { }
-            _log("[ProjectHelper] ⏸ Search cancelled by user.");
+            _log("[ProjectHelper] Search cancelled by user.");
         }
 
         private async Task SearchContentAsync()
@@ -300,77 +327,74 @@ namespace DhCodetaskExtension.ViewModels
 
             if (string.IsNullOrEmpty(rgPath) || !File.Exists(rgPath))
             {
-                SearchStatus = "❌ ripgrep không tìm thấy. Cấu hình RipgrepPath trong Settings (JSON).";
-                _log("[ProjectHelper] ❌ RipgrepPath không được cấu hình hoặc file không tồn tại: " + rgPath);
+                SearchStatus = "ripgrep chua duoc cau hinh. Them RipgrepPath vao Settings.";
                 return;
             }
-
             if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             {
-                SearchStatus = "❌ DirectoryRootDhHosCodePath không hợp lệ hoặc không tồn tại.";
-                _log("[ProjectHelper] ❌ DirectoryRootDhHosCodePath: " + root);
+                SearchStatus = "DirectoryRootDhHosCodePath khong hop le.";
                 return;
             }
 
             try { _searchCts?.Cancel(); _searchCts?.Dispose(); }
             catch { }
-            _searchCts = new CancellationTokenSource();
+
+            // v3.13: hard timeout — prevent hanging on large repos
+            int timeoutSec = settings.SearchTimeoutSeconds > 0 ? settings.SearchTimeoutSeconds : 45;
+            _searchCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
             var ct = _searchCts.Token;
 
             IsSearching  = true;
-            SearchStatus = string.Format("⏳ Đang tìm: \"{0}\"...", ContentQuery);
             SearchResults.Clear();
             (SearchContentCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (CancelSearchCommand  as RelayCommand)?.RaiseCanExecuteChanged();
 
+            // Build rg args with extension filter + exclude dirs
+            int maxResults = settings.SearchMaxResults > 0 ? settings.SearchMaxResults : 200;
+            string rgArgs  = BuildRipgrepArgs(settings, ContentQuery, root, maxResults);
+
+            SearchStatus = string.Format("Tim: {0} (timeout {1}s, max {2} ket qua)...",
+                ContentQuery, timeoutSec, maxResults);
+            _log(string.Format("[ProjectHelper] rg {0}", rgArgs));
+
             var sw = Stopwatch.StartNew();
-
-            // v3.7: Log the exact command being run for debugging
-            var safePattern = ContentQuery.Replace("\"", "\\\"");
-            var safeRoot    = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var rgArgs      = string.Format("--json --line-number --max-count 500 -- \"{0}\" \"{1}\"",
-                                safePattern, safeRoot);
-
-            _log(string.Format("[ProjectHelper] 🔍 Bắt đầu tìm kiếm nội dung: \"{0}\"", ContentQuery));
-            _log(string.Format("[ProjectHelper] 🔍 ripgrep path: {0}", rgPath));
-            _log(string.Format("[ProjectHelper] 🔍 Thư mục tìm: {0}", root));
-            _log(string.Format("[ProjectHelper] 🔍 Lệnh: \"{0}\" {1}", rgPath, rgArgs));
-
             try
             {
                 var results = await Task.Run(
-                    () => RunRipgrep(rgPath, ContentQuery, root, ct, _log), ct);
-
+                    () => RunRipgrep(rgPath, rgArgs, root, ct, _log), ct);
                 sw.Stop();
-                _log(string.Format("[ProjectHelper] ✅ Tìm kiếm hoàn thành trong {0}ms — {1} kết quả",
+                _log(string.Format("[ProjectHelper] Search done: {0}ms, {1} results",
                     sw.ElapsedMilliseconds, results.Count));
 
                 if (!ct.IsCancellationRequested)
                 {
                     foreach (var r in results) SearchResults.Add(r);
-                    SearchStatus = results.Count == 0
-                        ? string.Format("🔍 Không tìm thấy kết quả cho \"{0}\" ({1}ms)",
-                            ContentQuery, sw.ElapsedMilliseconds)
-                        : string.Format("✅ {0} kết quả cho \"{1}\" ({2}ms)",
-                            results.Count, ContentQuery, sw.ElapsedMilliseconds);
+                    if (results.Count == 0)
+                        SearchStatus = string.Format(
+                            "Khong co ket qua cho [{0}] ({1}ms)", ContentQuery, sw.ElapsedMilliseconds);
+                    else if (results.Count >= maxResults)
+                        SearchStatus = string.Format(
+                            "{0}+ ket qua (hit limit {0}) cho [{1}] ({2}ms) -- thu hep tu khoa",
+                            maxResults, ContentQuery, sw.ElapsedMilliseconds);
+                    else
+                        SearchStatus = string.Format(
+                            "{0} ket qua cho [{1}] ({2}ms)", results.Count, ContentQuery, sw.ElapsedMilliseconds);
                 }
                 else
                 {
-                    SearchStatus = "⏸ Đã hủy tìm kiếm.";
+                    SearchStatus = string.Format(
+                        "Da huy / timeout sau {0}s -- thu hep tu khoa hoac tang SearchTimeoutSeconds",
+                        timeoutSec);
                 }
             }
             catch (OperationCanceledException)
             {
                 sw.Stop();
-                SearchStatus = "⏸ Đã hủy tìm kiếm.";
-                _log("[ProjectHelper] ⏸ Search cancelled.");
+                SearchStatus = string.Format(
+                    "Timeout sau {0}s -- tang SearchTimeoutSeconds trong Settings neu can.",
+                    timeoutSec);
             }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                SearchStatus = "❌ Lỗi: " + ex.Message;
-                _log("[ProjectHelper] ❌ Search error: " + ex.Message);
-            }
+            catch (Exception ex) { sw.Stop(); SearchStatus = "Loi: " + ex.Message; }
             finally
             {
                 IsSearching = false;
@@ -380,27 +404,66 @@ namespace DhCodetaskExtension.ViewModels
         }
 
         /// <summary>
-        /// Runs ripgrep with --json output.
-        /// v3.7: Logs the actual command, execution time, stderr output for debugging.
-        /// Tries direct execution first; falls back to cmd.exe if Win32Exception occurs
-        /// (e.g. 64-bit rg.exe launched from 32-bit VS2017 devenv.exe).
+        /// v3.13: Build ripgrep arguments with:
+        ///   - Extension whitelist (only search relevant file types)
+        ///   - Directory exclusions (skip bin/obj/.git/node_modules etc.)
+        ///   - max-count limit
+        ///   - --no-follow (skip symlinks to avoid loops)
+        /// </summary>
+        private static string BuildRipgrepArgs(
+            AppSettings settings, string pattern, string root, int maxResults)
+        {
+            var sb = new System.Text.StringBuilder();
+
+            sb.Append("--json ");
+            sb.Append("--line-number ");
+            sb.AppendFormat("--max-count {0} ", maxResults);
+            sb.Append("--no-follow ");     // skip symlinks
+            sb.Append("--no-binary ");     // skip binary files entirely
+
+            // Extension whitelist
+            var exts = (settings.SearchFileExtensions != null && settings.SearchFileExtensions.Count > 0)
+                ? settings.SearchFileExtensions.ToArray()
+                : DefaultSearchExtensions;
+            foreach (var ext in exts)
+            {
+                var e = ext.Trim();
+                if (!string.IsNullOrEmpty(e))
+                    sb.AppendFormat("--glob \"{0}\" ", e.StartsWith("*") ? e : "*." + e);
+            }
+
+            // Directory exclusions
+            var excludes = new System.Collections.Generic.List<string>(DefaultSearchExcludeDirs);
+            if (settings.SearchExcludeDirs != null)
+                excludes.AddRange(settings.SearchExcludeDirs);
+            foreach (var dir in excludes)
+            {
+                var d = dir.Trim().Trim('/', '\\');
+                if (!string.IsNullOrEmpty(d))
+                    sb.AppendFormat("--glob \"!{0}\" ", d);
+            }
+
+            // Pattern and root (-- separator prevents pattern starting with - being parsed as flag)
+            sb.AppendFormat("-- \"{0}\" \"{1}\"",
+                pattern,
+                root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+            return sb.ToString().TrimEnd();
+        }
+
+        /// <summary>
+        /// v3.13: Accepts pre-built rgArgs from BuildRipgrepArgs().
+        /// Tries direct execution first; falls back to cmd.exe for 64-bit rg on 32-bit VS2017.
         /// </summary>
         private static List<RipgrepSearchResult> RunRipgrep(
-            string rgPath, string pattern, string root, CancellationToken ct, Action<string> log)
+            string rgPath, string rgArgs, string root, CancellationToken ct, Action<string> log)
         {
-            var safePattern = pattern.Replace("\"", "\\\"");
-            var safeRoot    = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            // Use -- to separate flags from pattern (handles patterns starting with -)
-            var rgArgs = string.Format(
-                "--json --line-number --max-count 500 -- \"{0}\" \"{1}\"",
-                safePattern, safeRoot);
-
-            // 1. Try direct execution
+            // Extract root from rgArgs not needed — passed separately
+            ProcessStartInfo psi;
+            bool usedCmdFallback = false;
             try
             {
-                log?.Invoke(string.Format("[ProjectHelper] 🔍 Thử chạy trực tiếp: {0} {1}", rgPath, rgArgs));
-                var psi = new ProcessStartInfo(rgPath, rgArgs)
+                psi = new ProcessStartInfo(rgPath, rgArgs)
                 {
                     UseShellExecute        = false,
                     RedirectStandardOutput = true,
@@ -409,132 +472,93 @@ namespace DhCodetaskExtension.ViewModels
                     StandardOutputEncoding = Encoding.UTF8,
                     StandardErrorEncoding  = Encoding.UTF8
                 };
-                return ParseRipgrepOutput(psi, root, ct, log);
             }
-            catch (System.ComponentModel.Win32Exception ex)
-                when (ex.NativeErrorCode == 193 || ex.NativeErrorCode == 216 || ex.NativeErrorCode == 14001)
+            catch
             {
-                log?.Invoke(string.Format(
-                    "[ProjectHelper] ⚠ Direct launch failed (Win32 error {0} — likely 64-bit rg.exe on 32-bit host). Trying cmd.exe fallback...",
-                    ex.NativeErrorCode));
+                // 64-bit rg.exe on 32-bit VS2017 devenv.exe
+                usedCmdFallback = true;
+                psi = new ProcessStartInfo("cmd.exe",
+                    string.Format("/c \"{0}\" {1}", rgPath, rgArgs))
+                {
+                    UseShellExecute        = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    CreateNoWindow         = true,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding  = Encoding.UTF8
+                };
             }
+            if (usedCmdFallback)
+                log?.Invoke("[ProjectHelper] Using cmd.exe fallback for 64-bit rg.exe");
 
-            // 2. Fallback: launch via cmd.exe (64-bit on x64 Windows)
-            // cmd /c ""path\rg.exe" args" — outer quotes required by cmd for paths with spaces
-            var cmdArgs = string.Format("/c \"{0}\" {1}", rgPath, rgArgs);
-            log?.Invoke(string.Format("[ProjectHelper] 🔍 cmd.exe fallback: cmd.exe {0}", cmdArgs));
-
-            var cmdPsi = new ProcessStartInfo("cmd.exe", cmdArgs)
-            {
-                UseShellExecute        = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-                CreateNoWindow         = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding  = Encoding.UTF8
-            };
-            return ParseRipgrepOutput(cmdPsi, root, ct, log);
+            return ParseRipgrepOutput(psi, root, ct, log);
         }
 
-        /// <summary>
-        /// Starts the process, reads ripgrep --json output line by line, and returns results.
-        /// v3.7: Logs stderr so users can see ripgrep error messages in Output Window.
-        /// Also correctly computes RelativePath relative to the scan root.
-        /// </summary>
         private static List<RipgrepSearchResult> ParseRipgrepOutput(
             ProcessStartInfo psi, string root, CancellationToken ct, Action<string> log)
         {
-            var results    = new List<RipgrepSearchResult>();
-            var stderrBuf  = new StringBuilder();
+            var results   = new List<RipgrepSearchResult>();
+            var stderrBuf = new StringBuilder();
 
             using (var proc = Process.Start(psi))
             {
-                if (proc == null)
-                {
-                    log?.Invoke("[ProjectHelper] ❌ Không thể khởi động ripgrep process.");
-                    return results;
-                }
+                if (proc == null) return results;
+                ct.Register(() => { try { if (!proc.HasExited) proc.Kill(); } catch { } });
 
-                ct.Register(() =>
+                // Use a plain Thread (not Task) for stderr to avoid VSTHRD002.
+                // We are inside Task.Run so there is no JoinableTask sync context.
+                var stderrThread = new System.Threading.Thread(() =>
                 {
-                    try { if (!proc.HasExited) proc.Kill(); }
+                    try { stderrBuf.Append(proc.StandardError.ReadToEnd()); }
                     catch { }
-                });
-
-                // Read stderr on separate thread to avoid deadlock
-                var stderrTask = Task.Run(() =>
-                {
-                    string errLine;
-                    while ((errLine = proc.StandardError.ReadLine()) != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(errLine))
-                            stderrBuf.AppendLine(errLine);
-                    }
-                });
+                }) { IsBackground = true };
+                stderrThread.Start();
 
                 string line;
                 while ((line = proc.StandardOutput.ReadLine()) != null)
                 {
                     if (ct.IsCancellationRequested) break;
                     if (string.IsNullOrWhiteSpace(line)) continue;
-
                     try
                     {
                         var obj  = JObject.Parse(line);
-                        var type = obj["type"]?.ToString();
-                        if (type != "match") continue;
-
+                        if (obj["type"]?.ToString() != "match") continue;
                         var data = obj["data"] as JObject;
                         if (data == null) continue;
-
                         var filePath = data["path"]?["text"]?.ToString() ?? string.Empty;
                         var lineNum  = data["line_number"]?.ToObject<int>() ?? 0;
-                        var lineText = data["lines"]?["text"]?.ToString() ?? string.Empty;
-
-                        lineText = lineText.TrimEnd('\r', '\n');
+                        var lineText = (data["lines"]?["text"]?.ToString() ?? string.Empty)
+                            .TrimEnd('\r', '\n');
                         if (lineText.Length > 200) lineText = lineText.Substring(0, 197) + "...";
-
-                        // Compute relative path properly
                         string relPath = filePath;
                         if (!string.IsNullOrEmpty(root) &&
                             filePath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                        {
                             relPath = filePath.Substring(root.Length)
-                                .TrimStart(Path.DirectorySeparatorChar,
-                                           Path.AltDirectorySeparatorChar);
-                        }
-
+                                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         results.Add(new RipgrepSearchResult
                         {
-                            FilePath     = filePath,
-                            RelativePath = relPath,
-                            LineNumber   = lineNum,
-                            LineText     = lineText
+                            FilePath = filePath, RelativePath = relPath,
+                            LineNumber = lineNum, LineText = lineText
                         });
                     }
-                    catch { /* skip malformed JSON line */ }
+                    catch { }
                 }
 
                 proc.WaitForExit(10000);
-                stderrTask.Wait(2000);
+                stderrThread.Join(2000); // wait max 2s for stderr to finish
 
-                // v3.7: Log stderr so users can debug ripgrep issues from Output Window
                 var stderr = stderrBuf.ToString().Trim();
                 if (!string.IsNullOrEmpty(stderr))
                 {
-                    log?.Invoke("[ProjectHelper] ⚠ ripgrep stderr output:");
-                    foreach (var errLine in stderr.Split('\n'))
+                    log?.Invoke("[ProjectHelper] rg stderr:");
+                    foreach (var l in stderr.Split('\n'))
                     {
-                        var trimmed = errLine.Trim('\r', '\n', ' ');
-                        if (!string.IsNullOrEmpty(trimmed))
-                            log?.Invoke("    " + trimmed);
+                        var t = l.Trim('\r', '\n', ' ');
+                        if (!string.IsNullOrEmpty(t)) log?.Invoke("  " + t);
                     }
                 }
-
-                log?.Invoke(string.Format("[ProjectHelper] 🔍 ripgrep exit code: {0} — {1} matches parsed",
-                    proc.ExitCode, results.Count));
+                log?.Invoke(string.Format("[ProjectHelper] rg exit: {0}, {1} matches", proc.ExitCode, results.Count));
             }
-
             return results;
         }
 

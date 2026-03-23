@@ -35,6 +35,29 @@ jobs:
           "VERSION=$v" >> $env:GITHUB_OUTPUT
           "TAG=v$v"    >> $env:GITHUB_OUTPUT
 
+      # Fix #1: Fail fast if YOUR_GITHUB_USERNAME placeholder still present
+      - name: Validate no placeholder values
+        shell: pwsh
+        run: |
+          $placeholder = "YOUR_GITHUB_USERNAME"
+          $files = @(
+            "src/source.extension.vsixmanifest",
+            "docs/vsixfeed.xml",
+            "docs/vsixfeed.template.xml"
+          )
+          $found = $false
+          foreach ($f in $files) {
+            if (Test-Path $f) {
+              $content = Get-Content $f -Raw
+              if ($content -match [regex]::Escape($placeholder)) {
+                Write-Error "PLACEHOLDER in ${f}: replace YOUR_GITHUB_USERNAME with your GitHub username before releasing."
+                $found = $true
+              }
+            }
+          }
+          if ($found) { exit 1 }
+          Write-Host "Placeholder check OK."
+
       - name: Patch version in source files
         shell: pwsh
         run: node .github/workflows/release.js patch-version ${{ steps.ver.outputs.VERSION }}

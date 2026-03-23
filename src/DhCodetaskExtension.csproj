@@ -83,6 +83,9 @@
     <!-- Core — Models -->
     <Compile Include="Core\Models\AppSettings.cs" />
     <Compile Include="Core\Models\TaskItem.cs" />
+    <!-- v3.10 — Issue Creator &amp; Connection Info -->
+    <Compile Include="Core\Models\IssueConnectionInfo.cs" />
+    <Compile Include="Core\Services\IssueBodyParser.cs" />
     <Compile Include="Core\Models\TimeSession.cs" />
     <Compile Include="Core\Models\TodoItem.cs" />
     <Compile Include="Core\Models\WorkLog.cs" />
@@ -125,11 +128,9 @@
     <Compile Include="ToolWindows\ReportDetailDialog.xaml.cs">
       <DependentUpon>ReportDetailDialog.xaml</DependentUpon>
     </Compile>
-    <!-- AppSettingsJsonDialog replaces TaskSettingsDialog as the settings entry point -->
     <Compile Include="ToolWindows\AppSettingsJsonDialog.xaml.cs">
       <DependentUpon>AppSettingsJsonDialog.xaml</DependentUpon>
     </Compile>
-    <!-- TaskSettingsDialog kept for backwards compat but no longer wired to menus -->
     <Compile Include="ToolWindows\TaskSettingsDialog.xaml.cs">
       <DependentUpon>TaskSettingsDialog.xaml</DependentUpon>
     </Compile>
@@ -167,7 +168,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <!-- AppSettingsJsonDialog.xaml — v3.1 JSON settings -->
     <Page Include="ToolWindows\AppSettingsJsonDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

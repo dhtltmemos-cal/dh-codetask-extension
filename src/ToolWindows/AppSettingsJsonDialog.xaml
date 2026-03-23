@@ -38,8 +38,12 @@
                 <Button x:Name="BtnReset"    Content="↩ Reset"     Height="26" Padding="10,0" FontSize="11" Margin="0,0,6,0" Click="BtnReset_Click"/>
                 <Button x:Name="BtnReload"   Content="🔄 Reload"   Height="26" Padding="10,0" FontSize="11" Margin="0,0,6,0" Click="BtnReload_Click"/>
                 <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="4,2"/>
-                <Button x:Name="BtnOpenFile" Content="📂 Open File" Height="26" Padding="10,0" FontSize="11" Margin="0,0,0,0" Click="BtnOpenFile_Click"
+                <Button x:Name="BtnOpenFile" Content="📂 Open File" Height="26" Padding="10,0" FontSize="11" Margin="0,0,6,0" Click="BtnOpenFile_Click"
                         ToolTip="Mở file settings.json trong editor ngoài"/>
+                <!-- Fix #7: Test Gitea connection -->
+                <Button x:Name="BtnTestGitea" Content="🔌 Test Gitea" Height="26" Padding="10,0" FontSize="11" Margin="0,0,0,0"
+                        Click="BtnTestGitea_Click"
+                        ToolTip="Kiểm tra kết nối Gitea URL + Token (lưu JSON trước khi test)"/>
             </WrapPanel>
         </Border>
 

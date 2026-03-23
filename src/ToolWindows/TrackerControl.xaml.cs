@@ -20,6 +20,17 @@ namespace DhCodetaskExtension.ToolWindows
 
             _vm.ShowPauseReasonDialog = ShowPauseReasonDialogImpl;
 
+            // v3.10: wire clipboard action so copy commands work from ViewModel
+            _vm.CopyToClipboardAction = text =>
+            {
+                if (string.IsNullOrEmpty(text)) return;
+                AppLogger.Instance.TryCatch("CopyToClipboard", () =>
+                {
+                    Clipboard.SetText(text);
+                    AppLogger.Instance.Info("[UI] 📋 Copied: " + text);
+                });
+            };
+
             try
             {
                 InitializeComponent();

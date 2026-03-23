@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" d:DesignHeight="1000" d:DesignWidth="340">
+             mc:Ignorable="d" d:DesignHeight="1100" d:DesignWidth="340">
 
     <UserControl.Resources>
         <Style x:Key="SectionLabel" TargetType="TextBlock">
@@ -28,6 +28,16 @@
             <Setter Property="Padding" Value="7,0"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <!-- Style nhỏ cho nút copy inline -->
+        <Style x:Key="CopyBtn" TargetType="Button">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="ToolTip" Value="Copy"/>
+            <Setter Property="Content" Value="📋"/>
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
     </UserControl.Resources>
@@ -62,9 +72,72 @@
                      VerticalContentAlignment="Center" Margin="0,0,0,4"/>
             <TextBlock Text="{Binding LabelsDisplay, Mode=OneWay}" FontSize="10" Foreground="#007ACC"
                        Margin="0,0,0,4" TextWrapping="Wrap"/>
+
+            <!-- v3.10: Creator info (hiển thị khi có dữ liệu) -->
+            <Border Visibility="{Binding HasCreatorInfo, Converter={StaticResource BoolVis}}"
+                    Background="#F0F8FF" BorderBrush="#B0D8FF" BorderThickness="1"
+                    CornerRadius="3" Padding="6,4" Margin="0,0,0,4">
+                <WrapPanel>
+                    <TextBlock FontSize="10" Foreground="#555">
+                        <Run Text="👤 Tạo bởi: "/>
+                        <Run Text="{Binding CreatedByUser, Mode=OneWay}" FontWeight="SemiBold"/>
+                    </TextBlock>
+                    <TextBlock FontSize="10" Foreground="#555" Margin="10,0,0,0"
+                               Visibility="{Binding HasCreatorInfo, Converter={StaticResource BoolVis}}">
+                        <Run Text="📅 "/>
+                        <Run Text="{Binding CreatedAt, Mode=OneWay}"/>
+                    </TextBlock>
+                </WrapPanel>
+            </Border>
+
             <TextBox Text="{Binding TaskDescription, UpdateSourceTrigger=PropertyChanged}"
                      Height="50" FontSize="11" Padding="4" AcceptsReturn="True"
                      TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+            <!-- ── v3.10: Connection Info ───────────────────────────────── -->
+            <Border Visibility="{Binding HasConnInfo, Converter={StaticResource BoolVis}}"
+                    Background="#F5FFF5" BorderBrush="#A5D6A7" BorderThickness="1"
+                    CornerRadius="3" Padding="8,6" Margin="0,6,0,0">
+                <StackPanel>
+                    <TextBlock Text="🔌 Thông tin kết nối" FontSize="10" FontWeight="SemiBold"
+                               Foreground="#2E7D32" Margin="0,0,0,4"/>
+
+                    <!-- IP Server — chỉ hiển thị khi có giá trị -->
+                    <DockPanel Margin="0,0,0,2"
+                               Visibility="{Binding HasConnIpServer, Converter={StaticResource BoolVis}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource CopyBtn}"
+                                Command="{Binding CopyIpCommand}"/>
+                        <TextBlock FontSize="11" VerticalAlignment="Center">
+                            <Run Text="🖥 IP: " Foreground="#555"/>
+                            <Run Text="{Binding ConnIpServer, Mode=OneWay}" FontFamily="Consolas"
+                                 FontWeight="SemiBold" Foreground="#1B5E20"/>
+                        </TextBlock>
+                    </DockPanel>
+
+                    <!-- Database — chỉ hiển thị khi có giá trị -->
+                    <DockPanel Margin="0,0,0,2"
+                               Visibility="{Binding HasConnDatabase, Converter={StaticResource BoolVis}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource CopyBtn}"
+                                Command="{Binding CopyDbCommand}"/>
+                        <TextBlock FontSize="11" VerticalAlignment="Center">
+                            <Run Text="🗄 DB:  " Foreground="#555"/>
+                            <Run Text="{Binding ConnDatabase, Mode=OneWay}" FontFamily="Consolas"
+                                 FontWeight="SemiBold" Foreground="#1B5E20"/>
+                        </TextBlock>
+                    </DockPanel>
+
+                    <!-- Port — chỉ hiển thị khi có giá trị -->
+                    <DockPanel Visibility="{Binding HasConnPort, Converter={StaticResource BoolVis}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource CopyBtn}"
+                                Command="{Binding CopyPortCommand}"/>
+                        <TextBlock FontSize="11" VerticalAlignment="Center">
+                            <Run Text="🔌 Port:" Foreground="#555"/>
+                            <Run Text="{Binding ConnPort, Mode=OneWay}" FontFamily="Consolas"
+                                 FontWeight="SemiBold" Foreground="#1B5E20"/>
+                        </TextBlock>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
 
             <!-- ── Task Timer ─────────────────────────────────────────── -->
             <TextBlock Text="── ⏱ Task Timer ──" Style="{StaticResource SectionLabel}"/>
@@ -96,11 +169,6 @@
             <!-- ── TODO List ──────────────────────────────────────────── -->
             <TextBlock Text="── ✅ TODO List ──" Style="{StaticResource SectionLabel}"/>
 
-            <!--
-                v3.8 FIX: Bind Visibility to HasTodoTemplates (bool) instead of
-                TodoTemplates.Count (int). BooleanToVisibilityConverter only accepts bool.
-                Previously the Expander was always hidden because int cannot be converted.
-            -->
             <Expander Header="📋 Chọn nhanh từ mẫu" FontSize="10" Margin="0,0,0,6"
                       IsExpanded="True"
                       Visibility="{Binding HasTodoTemplates, Converter={StaticResource BoolVis}}">
@@ -141,13 +209,6 @@
                 </TextBox>
             </DockPanel>
 
-            <!--
-                v3.8: TODO item buttons (▶/⏸/✓) follow parent task state:
-                  - ▶ Start:  only enabled when parent task is Running AND todo is Idle/Paused
-                  - ⏸ Pause:  only enabled when todo is Running
-                  - ✓ Stop:   only enabled when todo is Running or Paused
-                The CanStart logic lives in TodoItemViewModel.CanStart (Func<bool> delegate).
-            -->
             <ItemsControl ItemsSource="{Binding Todos, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
